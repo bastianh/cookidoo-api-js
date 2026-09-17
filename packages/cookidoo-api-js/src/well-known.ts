@@ -1,0 +1,159 @@
+/**
+ * Discovery of Cookidoo API endpoints via the `.well-known/home` HAL
+ * documents.
+ *
+ * Cookidoo's backend exposes a HAL `.well-known/home` document per
+ * microservice (e.g. `shopping`, `planning`, `community/profile`), listing
+ * the live relative paths ("rels") of its endpoints. This module resolves
+ * the live path template for every rel this library depends on. There is no
+ * hardcoded fallback: a rel that can't be resolved (network error, or a
+ * shape too different to reconcile) fails the request instead of silently
+ * serving a possibly-stale path.
+ *
+ * Only the services/rels actually consumed by this library are fetched (see
+ * {@link ENDPOINT_RELS}), not a full recursive crawl. This list currently
+ * only covers what the ported vertical slice (login + `getUserInfo`) needs;
+ * it grows as more API methods are ported from the Python client.
+ */
+
+import { COMMUNITY_PROFILE_PATH, DEFAULT_API_HEADERS, LOGIN_HEADERS } from "./const.js";
+import { CookidooParseException, CookidooRequestException } from "./exceptions.js";
+import type { FetchLike } from "./http.js";
+
+export const WELL_KNOWN_HOME_PATH = ".well-known/home";
+
+const DISCOVERY_HEADERS: Readonly<Record<string, string>> = {
+  ...DEFAULT_API_HEADERS,
+  ...LOGIN_HEADERS,
+};
+
+/** rel -> [service, our own `{token}` shape template]. */
+export const ENDPOINT_RELS: Readonly<Record<string, readonly [string, string]>> = {
+  "community-profile:user-private-profile": [
+    "community/profile",
+    COMMUNITY_PROFILE_PATH,
+  ],
+};
+
+const DOMAIN_PREFIX_RE = /^https?:\/\/[^/]+/;
+const QUERY_SUFFIX_RE = /\{[?&].*$/;
+const TOKEN_RE = /(\{\/?)([A-Za-z0-9_]+)(\})/g;
+
+/** Cookidoo's own token names mapped to the set of our names they may stand for. */
+const KNOWN_TOKEN_ALIASES: Readonly<Record<string, ReadonlySet<string>>> = {
+  lang: new Set(["language", "locale"]),
+  id: new Set(["id"]),
+  dayKey: new Set(["day"]),
+  recipeId: new Set(["recipe"]),
+};
+
+/**
+ * Normalize a discovered HAL href into our own template shape.
+ *
+ * Returns `null` if the number of variables doesn't match, or a known
+ * token's position doesn't match one of its expected names.
+ */
+function normalizeHref(href: string, shapeTemplate: string): string | null {
+  let path = href.replace(DOMAIN_PREFIX_RE, "");
+  path = path.replace(QUERY_SUFFIX_RE, "");
+
+  const ourTokens = [...shapeTemplate.matchAll(TOKEN_RE)].map((m) => m[2]!);
+  const discoveredTokens = [...path.matchAll(TOKEN_RE)].map((m) => m[2]!);
+  if (ourTokens.length !== discoveredTokens.length) return null;
+
+  for (let i = 0; i < discoveredTokens.length; i++) {
+    const discoveredName = discoveredTokens[i]!;
+    const ourName = ourTokens[i]!;
+    const expected = KNOWN_TOKEN_ALIASES[discoveredName];
+    if (expected && !expected.has(ourName)) return null;
+  }
+
+  let i = 0;
+  const normalized = path.replace(TOKEN_RE, (_match, prefix: string) => {
+    const our = ourTokens[i++]!;
+    return `${prefix === "{/" ? "/" : ""}{${our}}`;
+  });
+  return normalized.replace(/^\//, "");
+}
+
+async function fetchServiceLinks(
+  serviceUrl: URL,
+  fetchImpl: FetchLike,
+): Promise<Record<string, string> | null> {
+  let response: Response;
+  try {
+    response = await fetchImpl(serviceUrl, { headers: DISCOVERY_HEADERS });
+  } catch {
+    return null;
+  }
+  if (response.status !== 200) return null;
+
+  let doc: unknown;
+  try {
+    doc = await response.json();
+  } catch {
+    return null;
+  }
+  if (typeof doc !== "object" || doc === null || !("_links" in doc)) return null;
+  const links = (doc as { _links: unknown })._links;
+  if (typeof links !== "object" || links === null) return null;
+
+  const result: Record<string, string> = {};
+  for (const [rel, value] of Object.entries(links as Record<string, unknown>)) {
+    let href: unknown;
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      href = (value as { href?: unknown }).href;
+    } else if (Array.isArray(value) && value[0] && typeof value[0] === "object") {
+      href = (value[0] as { href?: unknown }).href;
+    }
+    if (typeof href === "string") result[rel] = href;
+  }
+  return result;
+}
+
+/**
+ * Resolve live endpoint path templates via `.well-known/home` discovery.
+ *
+ * Fetches only the services referenced in {@link ENDPOINT_RELS} concurrently,
+ * extracts only the rels we use, and normalizes them into our template
+ * shape. Only returns once every single rel resolved successfully;
+ * otherwise throws (there is no partial/hardcoded fallback).
+ */
+export async function resolveEndpointPaths(
+  apiEndpoint: URL,
+  fetchImpl: FetchLike = fetch,
+): Promise<Record<string, string>> {
+  const services = [...new Set(Object.values(ENDPOINT_RELS).map(([service]) => service))].sort();
+  const fetched = await Promise.all(
+    services.map((service) =>
+      fetchServiceLinks(
+        new URL(`${apiEndpoint.origin}/${service}/${WELL_KNOWN_HOME_PATH}`),
+        fetchImpl,
+      ),
+    ),
+  );
+  const serviceLinks = new Map(services.map((service, i) => [service, fetched[i] ?? null]));
+
+  const overrides: Record<string, string> = {};
+  for (const [rel, [service, shapeTemplate]] of Object.entries(ENDPOINT_RELS)) {
+    const links = serviceLinks.get(service);
+    if (links === null || links === undefined) {
+      throw new CookidooRequestException(
+        `Endpoint discovery failed: could not reach the '${service}' service's .well-known/home document (needed to resolve '${rel}').`,
+      );
+    }
+    if (!(rel in links)) {
+      throw new CookidooParseException(
+        `Endpoint discovery failed: the '${service}' service's .well-known/home document no longer exposes the '${rel}' relation.`,
+      );
+    }
+    const normalized = normalizeHref(links[rel]!, shapeTemplate);
+    if (normalized === null) {
+      throw new CookidooParseException(
+        `Endpoint discovery failed: the '${rel}' relation on the '${service}' service changed shape unexpectedly.`,
+      );
+    }
+    overrides[rel] = normalized;
+  }
+  return overrides;
+}
