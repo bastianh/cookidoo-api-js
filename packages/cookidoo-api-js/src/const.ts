@@ -1,0 +1,44 @@
+/** Constants for the Cookidoo API client. */
+
+export const DEFAULT_API_HEADERS: Readonly<Record<string, string>> = {
+  ACCEPT: "application/json",
+};
+
+/**
+ * A browser-like User-Agent for the login flow requests only.
+ *
+ * The login flow is served behind Cloudflare and clients without a
+ * recognizable browser User-Agent are more likely to be flagged as bots,
+ * causing intermittent 403s. This does not touch any caller defaults, it is
+ * only sent with the login requests below.
+ * See https://github.com/miaucl/cookidoo-api/issues/230
+ */
+export const LOGIN_HEADERS: Readonly<Record<string, string>> = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+    "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+};
+
+export const CIAM_BASE_URL = "https://ciam.prod.cookidoo.vorwerk-digital.com";
+export const CIAM_LOGIN_SRV_URL = `${CIAM_BASE_URL}/login-srv/login`;
+export const OIDC_DISCOVERY_URL = `${CIAM_BASE_URL}/.well-known/openid-configuration`;
+
+/**
+ * OAuth2 / OIDC client. The bearer token it yields works against the same
+ * `apiEndpoint` as a previous cookie session, and additionally reaches the
+ * remote-monitoring backend.
+ *
+ * The login runs as a *public* client: authorization code + PKCE, with the
+ * client id sent in the token request body and no client secret anywhere.
+ * Both values are public identifiers rather than credentials (RFC 6749
+ * sec. 2.2) and default to the ones of the Cookidoo mobile app. Callers are
+ * not expected to override them.
+ */
+export const OAUTH_CLIENT_ID = "mobile-android";
+export const OAUTH_REDIRECT_URI = "com.vorwerk.cookidoo://code-grant";
+export const OAUTH_SCOPE = "openid profile email offline offline_access";
+
+/** Refresh a little before the (12h) access token actually expires. */
+export const TOKEN_EXPIRY_MARGIN_S = 300;
+
+export const COMMUNITY_PROFILE_PATH = "community/profile/{language}";
