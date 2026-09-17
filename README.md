@@ -1,0 +1,42 @@
+# cookidoo-api-js (monorepo)
+
+An unofficial JavaScript/TypeScript port of [cookidoo-api](https://github.com/miaucl/cookidoo-api) (Python), plus a Node-RED integration built on top of it.
+
+## Disclaimer
+
+The developers of this project are in no way endorsed by or affiliated with Cookidoo or Vorwerk, or any associated subsidiaries, logos or trademarks.
+
+## Packages
+
+- [`packages/cookidoo-api-js`](packages/cookidoo-api-js) — the core client library (TypeScript, published as `cookidoo-api-js`). Signs in via the official OAuth2/PKCE login flow and exposes the Cookidoo API.
+- [`packages/node-red-cookidoo`](packages/node-red-cookidoo) — Node-RED nodes (published as `node-red-cookidoo`) built on `cookidoo-api-js`, for use in Node-RED flows.
+
+## Status
+
+This is an early, incremental port. It currently covers the OAuth2/PKCE login flow, access-token refresh, token persistence, and one representative endpoint (`getUserInfo`) to prove the whole path end-to-end. Further endpoints (shopping list, custom recipes, calendar, device/remote-monitoring, ...) are ported incrementally from the [Python client](https://github.com/miaucl/cookidoo-api).
+
+## Dev setup
+
+```bash
+pnpm install
+pnpm build
+pnpm test
+pnpm lint
+```
+
+This is a [pnpm workspace](https://pnpm.io/workspaces); each package also has its own `build`/`test`/`typecheck` scripts, runnable from within `packages/*`. Linting (ESLint, flat config) is set up once at the repo root and covers every package.
+
+## Manual testing with Node-RED
+
+A `docker-compose.yml` at the repo root spins up an official Node-RED image with the two packages mounted straight from your working tree, so you can drag the Cookidoo nodes into a flow and try them against a real account without publishing anything.
+
+```bash
+pnpm --filter cookidoo-api-js build   # dist/ has to exist before the container starts
+docker compose up
+```
+
+Then open <http://localhost:1880>. See [`docker-compose.yml`](docker-compose.yml) for details; re-run the build and restart the container (`docker compose restart`) to pick up code changes, since Node-RED only loads node code on startup. This setup is for local, unauthenticated manual testing only — do not expose port 1880 beyond your machine.
+
+## Credits
+
+This project is an independent JavaScript/TypeScript port of [**cookidoo-api**](https://github.com/miaucl/cookidoo-api) by [Cyrill Raccaud (miaucl)](https://github.com/miaucl), the original (MIT-licensed) Python client. All credit for reverse-engineering the Cookidoo API — the OAuth2/PKCE login flow, the `.well-known` endpoint discovery, and the various request/response shapes — belongs to that project; this repo follows its design closely and ports it to the Node.js ecosystem. It is not affiliated with or endorsed by the upstream project.
