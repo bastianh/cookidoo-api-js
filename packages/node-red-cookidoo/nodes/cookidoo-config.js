@@ -2,13 +2,44 @@
 
 const { Cookidoo, getLocalizationOptions } = require("cookidoo-api-js");
 
+/**
+ * Read and JSON-parse a request body without depending on whatever (if any)
+ * body-parsing middleware Node-RED's admin app happens to have installed --
+ * `req.body` is used if something already parsed it, otherwise the raw
+ * stream is read directly.
+ */
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    if (req.body !== undefined) {
+      resolve(req.body);
+      return;
+    }
+    let data = "";
+    req.on("data", (chunk) => {
+      data += chunk;
+    });
+    req.on("end", () => {
+      try {
+        resolve(data ? JSON.parse(data) : {});
+      } catch (e) {
+        reject(e);
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
 module.exports = function (RED) {
   /**
-   * Holds the Cookidoo credentials/localization and a single, shared,
-   * lazily-logged-in `Cookidoo` client. Nodes look this config node up via
+   * Holds the Cookidoo localization and the OAuth2 tokens obtained via the
+   * "Login" button in the editor. The account password is never persisted:
+   * it is only ever sent, transiently, to the `/login` admin route below,
+   * which performs the login and stores just the resulting tokens.
+   *
+   * Constructs a single, shared `Cookidoo` client, restoring any previously
+   * stored tokens on startup. Nodes look this config node up via
    * `RED.nodes.getNode(config.cookidoo)` and call `getClient()` rather than
-   * constructing their own client, so a deploy with several Cookidoo nodes
-   * still only logs in once.
+   * constructing their own client.
    */
   function CookidooConfigNode(config) {
     RED.nodes.createNode(this, config);
@@ -25,29 +56,37 @@ module.exports = function (RED) {
           language: node.language,
           url: node.localizationUrl,
         },
-        email: node.credentials.email,
-        password: node.credentials.password,
       },
       {
-        onAuthDataUpdate: () => {
+        onAuthDataUpdate: (authData) => {
+          // The server rotates the refresh token on every refresh; persist
+          // whatever it hands back so a later restart doesn't retry with a
+          // retired one.
+          node.credentials.authData = JSON.stringify(authData);
+          RED.nodes.addCredentials(node.id, node.credentials);
           node.status({ fill: "green", shape: "dot", text: "logged in" });
         },
       },
     );
 
-    let loginPromise = null;
-
-    /** Resolve to a logged-in Cookidoo client, sharing one in-flight login. */
-    node.getClient = async function () {
-      if (loginPromise === null) {
-        node.status({ fill: "yellow", shape: "ring", text: "logging in..." });
-        loginPromise = node.client.login().catch((err) => {
-          loginPromise = null;
-          node.status({ fill: "red", shape: "dot", text: "login failed" });
-          throw err;
-        });
+    if (node.credentials.authData) {
+      try {
+        node.client.applyAuthData(JSON.parse(node.credentials.authData));
+        node.status({ fill: "green", shape: "dot", text: "logged in" });
+      } catch {
+        node.status({ fill: "red", shape: "ring", text: "invalid stored token" });
       }
-      await loginPromise;
+    } else {
+      node.status({ fill: "grey", shape: "ring", text: "not logged in" });
+    }
+
+    /** Resolve to a logged-in Cookidoo client, or throw if none is set up yet. */
+    node.getClient = async function () {
+      if (!node.client.authData) {
+        throw new Error(
+          "Cookidoo: not logged in. Open this config node in the editor and click Login.",
+        );
+      }
       return node.client;
     };
   }
@@ -55,7 +94,11 @@ module.exports = function (RED) {
   RED.nodes.registerType("cookidoo-config", CookidooConfigNode, {
     credentials: {
       email: { type: "text" },
-      password: { type: "password" },
+      // A JSON-stringified CookidooAuthData ({accessToken, refreshToken,
+      // expiresAt}). Never bound to an editor input: it is only ever set
+      // server-side, either by the /login route below or by the
+      // onAuthDataUpdate refresh callback above.
+      authData: { type: "password" },
     },
   });
 
@@ -64,6 +107,56 @@ module.exports = function (RED) {
     RED.auth.needsPermission("cookidoo-config.read"),
     function (_req, res) {
       res.json(getLocalizationOptions());
+    },
+  );
+
+  /**
+   * Performs a one-off Cookidoo login with the posted email/password and
+   * persists only the resulting OAuth2 tokens as this node's credentials --
+   * the password is used for this one request and never stored. If the
+   * config node is already deployed, its live client is updated immediately
+   * so running flows pick up the new tokens without a redeploy.
+   */
+  RED.httpAdmin.post(
+    "/cookidoo-api-js/login",
+    RED.auth.needsPermission("cookidoo-config.write"),
+    async function (req, res) {
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        res.status(400).json({ success: false, message: "Invalid request body." });
+        return;
+      }
+
+      const { id, email, password, countryCode, language, localizationUrl } = body;
+      if (!id || !email || !password) {
+        res.status(400).json({ success: false, message: "Missing id, email or password." });
+        return;
+      }
+
+      try {
+        const client = new Cookidoo({
+          localization: { countryCode, language, url: localizationUrl },
+          email,
+          password,
+        });
+        await client.login();
+
+        const credentials = { email, authData: JSON.stringify(client.authData) };
+        RED.nodes.addCredentials(id, credentials);
+
+        const existingNode = RED.nodes.getNode(id);
+        if (existingNode && existingNode.type === "cookidoo-config") {
+          existingNode.credentials = credentials;
+          existingNode.client.applyAuthData(client.authData);
+          existingNode.status({ fill: "green", shape: "dot", text: "logged in" });
+        }
+
+        res.json({ success: true });
+      } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
+      }
     },
   );
 };

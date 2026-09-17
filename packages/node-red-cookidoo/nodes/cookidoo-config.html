@@ -9,12 +9,15 @@
     },
     credentials: {
       email: { type: "text" },
-      password: { type: "password" },
+      // Set only by the Login button below (via the /login admin route) or
+      // by the node's own token-refresh callback -- never edited directly.
+      authData: { type: "password" },
     },
     label: function () {
       return this.name || `cookidoo (${this.countryCode}/${this.language})`;
     },
     oneditprepare: function () {
+      const node = this;
       const select = $("#node-config-input-localization");
       $.getJSON("cookidoo-api-js/localizations", (options) => {
         select.empty();
@@ -25,13 +28,54 @@
               .text(`${option.countryCode} - ${option.language}`),
           );
         }
-        select.val(`${this.countryCode}|${this.language}|${this.localizationUrl}`);
+        select.val(`${node.countryCode}|${node.language}|${node.localizationUrl}`);
       });
       select.on("change", () => {
         const [countryCode, language, url] = select.val().split("|");
         $("#node-config-input-countryCode").val(countryCode);
         $("#node-config-input-language").val(language);
         $("#node-config-input-localizationUrl").val(url);
+      });
+
+      const statusEl = $("#node-config-login-status");
+      statusEl.text(node.credentials.authData ? "✓ logged in" : "not logged in yet").css(
+        "color",
+        node.credentials.authData ? "green" : "#888",
+      );
+
+      $("#node-config-login-button").on("click", function (evt) {
+        evt.preventDefault();
+        const email = $("#node-config-input-email").val();
+        const password = $("#node-config-input-login-password").val();
+        const [countryCode, language, localizationUrl] = select.val().split("|");
+
+        if (!email || !password) {
+          statusEl.text("Enter email and password first.").css("color", "red");
+          return;
+        }
+
+        statusEl.text("Logging in...").css("color", "#888");
+        $.ajax({
+          url: "cookidoo-api-js/login",
+          type: "POST",
+          contentType: "application/json",
+          data: JSON.stringify({
+            id: node.id,
+            email,
+            password,
+            countryCode,
+            language,
+            localizationUrl,
+          }),
+        })
+          .done(() => {
+            statusEl.text("✓ Logged in").css("color", "green");
+            $("#node-config-input-login-password").val("");
+          })
+          .fail((jqXHR) => {
+            const message = jqXHR.responseJSON?.message || "Login failed.";
+            statusEl.text(`✗ ${message}`).css("color", "red");
+          });
       });
     },
   });
@@ -54,12 +98,17 @@
     <input type="text" id="node-config-input-email" placeholder="you@example.com" />
   </div>
   <div class="form-row">
-    <label for="node-config-input-password"><i class="fa fa-lock"></i> Password</label>
-    <input type="password" id="node-config-input-password" />
+    <label for="node-config-input-login-password"><i class="fa fa-lock"></i> Password</label>
+    <input type="password" id="node-config-input-login-password" placeholder="only used to log in, never stored" />
+  </div>
+  <div class="form-row">
+    <label>&nbsp;</label>
+    <button type="button" id="node-config-login-button" class="red-ui-button">Login</button>
+    <span id="node-config-login-status" style="margin-left: 10px;"></span>
   </div>
 </script>
 
 <script type="text/html" data-help-name="cookidoo-config">
-  <p>Holds the Cookidoo account credentials and localization (country/language) shared by all Cookidoo nodes in a flow.</p>
-  <p>Login runs lazily against the official Cookidoo OAuth2/PKCE flow the first time a Cookidoo node uses this config node, and the resulting client (and its access token refresh) is shared by every node that references it.</p>
+  <p>Holds the Cookidoo localization (country/language) and OAuth2 tokens shared by all Cookidoo nodes in a flow.</p>
+  <p>Enter the account email/password and click <b>Login</b> to run the official Cookidoo OAuth2/PKCE flow once. Only the resulting access/refresh tokens are stored as this node's credentials -- the password itself is never persisted, and the token is refreshed automatically (rotating what's stored) as it's used.</p>
 </script>
