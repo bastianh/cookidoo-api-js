@@ -1,0 +1,31 @@
+<script type="text/javascript">
+  RED.nodes.registerType("cookidoo-clear-shopping-list", {
+    category: "cookidoo",
+    color: "#f2735e",
+    defaults: {
+      name: { value: "" },
+      cookidoo: { value: "", type: "cookidoo-config", required: true },
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-trash",
+    label: function () {
+      return this.name || "clear shopping list";
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="cookidoo-clear-shopping-list">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-cookidoo"><i class="fa fa-cog"></i> Cookidoo</label>
+    <input type="text" id="node-input-cookidoo" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="cookidoo-clear-shopping-list">
+  <p>Removes <b>all</b> additional items, ingredients and recipes from the shopping list on every input message. There is no confirmation or undo -- gate this node behind whatever you need in your flow before wiring something into it.</p>
+</script>
