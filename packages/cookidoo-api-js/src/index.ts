@@ -17,8 +17,13 @@ export {
   defaultConfig,
   defaultLocalization,
   ThermomixMachineType,
+  type CookidooAdditionalItem,
   type CookidooAuthData,
   type CookidooConfig,
+  type CookidooIngredient,
+  type CookidooIngredientItem,
+  type CookidooItem,
   type CookidooLocalizationConfig,
+  type CookidooShoppingRecipe,
   type CookidooUserInfo,
 } from "./types.js";

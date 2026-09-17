@@ -18,14 +18,27 @@ import {
   CookidooParseException,
   CookidooRequestException,
 } from "./exceptions.js";
-import { cookidooUserInfoFromJson } from "./helpers.js";
+import {
+  cookidooAdditionalItemFromJson,
+  cookidooIngredientItemFromJson,
+  cookidooRecipeFromJson,
+  cookidooUserInfoFromJson,
+} from "./helpers.js";
 import { CookieJar, jarRequest, type FetchLike } from "./http.js";
-import type { CommunityProfileJSON } from "./raw-types.js";
+import type {
+  AdditionalItemJSON,
+  CommunityProfileJSON,
+  ItemJSON,
+  RecipeJSON,
+} from "./raw-types.js";
 import {
   defaultConfig,
+  type CookidooAdditionalItem,
   type CookidooAuthData,
   type CookidooConfig,
+  type CookidooIngredientItem,
   type CookidooLocalizationConfig,
+  type CookidooShoppingRecipe,
   type CookidooUserInfo,
 } from "./types.js";
 import { resolveEndpointPaths } from "./well-known.js";
@@ -202,30 +215,237 @@ export class Cookidoo {
   /** Get the currently signed-in user's info. */
   async getUserInfo(): Promise<CookidooUserInfo> {
     await this.ensureEndpoints();
-    const url = new URL(
-      this.path("community-profile:user-private-profile").replace(
-        "{language}",
-        this.cfg.localization.language,
-      ),
-      `${this.apiEndpoint.toString().replace(/\/$/, "")}/`,
-    );
+    const url = this.endpointUrl("community-profile:user-private-profile");
     const result = await this.requestJson("GET", url, "loading user info");
-    if (typeof result !== "object" || result === null) {
+    const data = Cookidoo.ensureMapping(result, "loading user info");
+    return Cookidoo.parseResult("loading user info", () =>
+      cookidooUserInfoFromJson(data as unknown as CommunityProfileJSON),
+    );
+  }
+
+  /** Get the recipes with at least one ingredient on the shopping list. */
+  async getShoppingListRecipes(): Promise<CookidooShoppingRecipe[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("pantry:home");
+    const result = await this.requestJson("GET", url, "loading recipes");
+    const data = Cookidoo.ensureMapping(result, "loading recipes");
+    return Cookidoo.parseResult("loading recipes", () =>
+      [
+        ...(data.recipes as RecipeJSON[]),
+        ...(data.customerRecipes as RecipeJSON[]),
+      ].map((recipe) => cookidooRecipeFromJson(recipe, this.cfg.localization)),
+    );
+  }
+
+  /** Get the ingredient items on the shopping list, across all recipes. */
+  async getIngredientItems(): Promise<CookidooIngredientItem[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("pantry:home");
+    const result = await this.requestJson("GET", url, "loading ingredient items");
+    const data = Cookidoo.ensureMapping(result, "loading ingredient items");
+    return Cookidoo.parseResult("loading ingredient items", () =>
+      [...(data.recipes as RecipeJSON[]), ...(data.customerRecipes as RecipeJSON[])].flatMap(
+        (recipe) => recipe.recipeIngredientGroups.map(cookidooIngredientItemFromJson),
+      ),
+    );
+  }
+
+  /** Add the ingredient items of the given recipes to the shopping list. */
+  async addIngredientItemsForRecipes(recipeIds: string[]): Promise<CookidooIngredientItem[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("pantry:recipe-ingredients");
+    const result = await this.requestJson("POST", url, "add ingredient items for recipes", {
+      json: { recipeIDs: recipeIds },
+    });
+    const data = Cookidoo.ensureMapping(result, "add ingredient items for recipes");
+    return Cookidoo.parseResult("loading added ingredient items", () =>
+      (data.data as RecipeJSON[]).flatMap((recipe) =>
+        recipe.recipeIngredientGroups.map(cookidooIngredientItemFromJson),
+      ),
+    );
+  }
+
+  /** Remove the ingredient items of the given recipes from the shopping list. */
+  async removeIngredientItemsForRecipes(recipeIds: string[]): Promise<void> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("pantry:remove-recipe");
+    await this.requestJson("POST", url, "remove ingredient items for recipes", {
+      json: { recipeIDs: recipeIds },
+      parseResponse: false,
+    });
+  }
+
+  /** Change the `isOwned` value of the given ingredient items. */
+  async editIngredientItemsOwnership(
+    ingredientItems: CookidooIngredientItem[],
+  ): Promise<CookidooIngredientItem[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("pantry:edit-ingredients-ownership");
+    const result = await this.requestJson("POST", url, "edit ingredient items ownership", {
+      json: {
+        ingredients: ingredientItems.map((item) => ({
+          id: item.id,
+          isOwned: item.isOwned,
+          ownedTimestamp: Math.floor(Date.now() / 1000),
+        })),
+      },
+    });
+    const data = Cookidoo.ensureMapping(result, "edit ingredient items ownership");
+    return Cookidoo.parseResult("loading edited ingredient items", () =>
+      (data.data as ItemJSON[]).map(cookidooIngredientItemFromJson),
+    );
+  }
+
+  /** Add the ingredient items of the given custom recipes to the shopping list. */
+  async addIngredientItemsForCustomRecipes(
+    recipeIds: string[],
+  ): Promise<CookidooIngredientItem[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("pantry:recipe-ingredients");
+    const result = await this.requestJson(
+      "POST",
+      url,
+      "add ingredient items for custom recipes",
+      { json: { recipeIDs: recipeIds.map((id) => ({ id, source: "CUSTOMER" })) } },
+    );
+    const data = Cookidoo.ensureMapping(result, "add ingredient items for custom recipes");
+    return Cookidoo.parseResult("loading added ingredient items", () =>
+      (data.data as RecipeJSON[]).flatMap((recipe) =>
+        recipe.recipeIngredientGroups.map(cookidooIngredientItemFromJson),
+      ),
+    );
+  }
+
+  /** Remove the ingredient items of the given custom recipes from the shopping list. */
+  async removeIngredientItemsForCustomRecipes(recipeIds: string[]): Promise<void> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("pantry:remove-recipe");
+    await this.requestJson("POST", url, "remove ingredient items for custom recipes", {
+      json: { recipeIDs: recipeIds },
+      parseResponse: false,
+    });
+  }
+
+  /** Get the additional (not recipe-linked) items on the shopping list. */
+  async getAdditionalItems(): Promise<CookidooAdditionalItem[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("pantry:home");
+    const result = await this.requestJson("GET", url, "loading additional items");
+    const data = Cookidoo.ensureMapping(result, "loading additional items");
+    return Cookidoo.parseResult("loading additional items", () =>
+      (data.additionalItems as AdditionalItemJSON[]).map(cookidooAdditionalItemFromJson),
+    );
+  }
+
+  /**
+   * Create additional items on the shopping list.
+   *
+   * Only the label can be set: the added items are always `isOwned: false`,
+   * so chain an immediate {@link editAdditionalItemsOwnership} call if
+   * that's not the desired state.
+   */
+  async addAdditionalItems(additionalItemNames: string[]): Promise<CookidooAdditionalItem[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("pantry:add-additional-items-v2");
+    const result = await this.requestJson("POST", url, "add additional items", {
+      json: { itemsValue: additionalItemNames },
+    });
+    const data = Cookidoo.ensureMapping(result, "add additional items");
+    return Cookidoo.parseResult("loading added additional items", () =>
+      (data.data as AdditionalItemJSON[]).map(cookidooAdditionalItemFromJson),
+    );
+  }
+
+  /** Change the `name` of the given additional items. */
+  async editAdditionalItems(
+    additionalItems: CookidooAdditionalItem[],
+  ): Promise<CookidooAdditionalItem[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("pantry:edit-additional-items");
+    const result = await this.requestJson("POST", url, "edit additional items", {
+      json: {
+        additionalItems: additionalItems.map((item) => ({ id: item.id, name: item.name })),
+      },
+    });
+    const data = Cookidoo.ensureMapping(result, "edit additional items");
+    return Cookidoo.parseResult("loading edited additional items", () =>
+      (data.data as AdditionalItemJSON[]).map(cookidooAdditionalItemFromJson),
+    );
+  }
+
+  /** Change the `isOwned` value of the given additional items. */
+  async editAdditionalItemsOwnership(
+    additionalItems: CookidooAdditionalItem[],
+  ): Promise<CookidooAdditionalItem[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("pantry:edit-additional-items-ownership");
+    const result = await this.requestJson("POST", url, "edit additional items ownership", {
+      json: {
+        additionalItems: additionalItems.map((item) => ({
+          id: item.id,
+          isOwned: item.isOwned,
+          ownedTimestamp: Math.floor(Date.now() / 1000),
+        })),
+      },
+    });
+    const data = Cookidoo.ensureMapping(result, "edit additional items ownership");
+    return Cookidoo.parseResult("loading edited additional items", () =>
+      (data.data as AdditionalItemJSON[]).map(cookidooAdditionalItemFromJson),
+    );
+  }
+
+  /** Remove the given additional items from the shopping list. */
+  async removeAdditionalItems(additionalItemIds: string[]): Promise<void> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("pantry:remove-additional-items");
+    await this.requestJson("POST", url, "remove additional items", {
+      json: { additionalItemIDs: additionalItemIds },
+      parseResponse: false,
+    });
+  }
+
+  /** Remove all additional items, ingredients and recipes from the shopping list. */
+  async clearShoppingList(): Promise<void> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("pantry:home");
+    await this.requestJson("DELETE", url, "clear shopping list", { parseResponse: false });
+  }
+
+  // -- internal request helpers -------------------------------------------
+
+  /** Build the full URL for a discovered endpoint rel, substituting `{tokens}`. */
+  private endpointUrl(rel: string, tokens: Record<string, string> = {}): URL {
+    let template = this.path(rel);
+    for (const [key, value] of Object.entries({
+      language: this.cfg.localization.language,
+      ...tokens,
+    })) {
+      template = template.replace(`{${key}}`, value);
+    }
+    return new URL(template, `${this.apiEndpoint.toString().replace(/\/$/, "")}/`);
+  }
+
+  /** Return a JSON-object response or raise the standard parse exception. */
+  private static ensureMapping(result: unknown, operation: string): Record<string, unknown> {
+    if (typeof result !== "object" || result === null || Array.isArray(result)) {
       throw new CookidooParseException(
-        "Loading user info failed during parsing of request response.",
+        `${capitalize(operation)} failed during parsing of request response.`,
       );
     }
+    return result as Record<string, unknown>;
+  }
+
+  /** Convert a validated JSON response into public types. */
+  private static parseResult<T>(operation: string, parser: () => T): T {
     try {
-      return cookidooUserInfoFromJson(result as CommunityProfileJSON);
+      return parser();
     } catch (e) {
       throw new CookidooParseException(
-        "Loading user info failed during parsing of request response.",
+        `${capitalize(operation)} failed during parsing of request response.`,
         { cause: e },
       );
     }
   }
-
-  // -- internal request helpers -------------------------------------------
 
   private async requestJson(
     method: string,

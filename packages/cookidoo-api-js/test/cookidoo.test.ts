@@ -9,6 +9,24 @@ const LOCALIZATION = {
   url: "https://cookidoo.test/foundation/de-TEST",
 };
 
+const RAW_RECIPE = {
+  id: "r1",
+  title: "Mini-Pavlova",
+  descriptiveAssets: null,
+  recipeIngredientGroups: [
+    {
+      id: "ing-1",
+      localId: "local-ing-1",
+      ingredientNotation: "Zucker",
+      isOwned: false,
+      quantity: { value: 200, from: null, to: null },
+      unitNotation: "g",
+    },
+  ],
+};
+
+const RAW_ADDITIONAL_ITEM = { id: "a1", name: "Napkins", isOwned: false };
+
 /** A hand-rolled fetch stub that plays the CIAM + Cookidoo backends for tests. */
 function createMockFetch(overrides: { password?: string; errorRedirect?: boolean } = {}) {
   let capturedState: string | null = null;
@@ -74,6 +92,70 @@ function createMockFetch(overrides: { password?: string; errorRedirect?: boolean
           savedSearches: [{ id: "default", search: { countries: ["ch"] } }],
           meta: { cloudinaryPublicId: "abc123" },
         });
+      }
+
+      if (url.pathname === "/shopping/.well-known/home") {
+        return jsonResponse({
+          _links: {
+            "pantry:home": { href: "/shopping/{lang}" },
+            "pantry:edit-ingredients-ownership": {
+              href: "/shopping/{lang}/owned-ingredients/ownership/edit",
+            },
+            "pantry:recipe-ingredients": { href: "/shopping/{lang}/recipes/add" },
+            "pantry:remove-recipe": { href: "/shopping/{lang}/recipes/remove" },
+            "pantry:add-additional-items-v2": {
+              href: "/shopping/{lang}/additional-items/add",
+            },
+            "pantry:edit-additional-items": {
+              href: "/shopping/{lang}/additional-items/edit",
+            },
+            "pantry:edit-additional-items-ownership": {
+              href: "/shopping/{lang}/additional-items/ownership/edit",
+            },
+            "pantry:remove-additional-items": {
+              href: "/shopping/{lang}/additional-items/remove",
+            },
+          },
+        });
+      }
+      if (url.pathname === "/shopping/de-TEST") {
+        if (method === "GET") {
+          return jsonResponse({
+            recipes: [RAW_RECIPE],
+            customerRecipes: [],
+            additionalItems: [RAW_ADDITIONAL_ITEM],
+          });
+        }
+        if (method === "DELETE") {
+          return new Response(null, { status: 204 });
+        }
+      }
+      if (url.pathname === "/shopping/de-TEST/recipes/add" && method === "POST") {
+        return jsonResponse({ data: [RAW_RECIPE] });
+      }
+      if (url.pathname === "/shopping/de-TEST/recipes/remove" && method === "POST") {
+        return new Response(null, { status: 204 });
+      }
+      if (
+        url.pathname === "/shopping/de-TEST/owned-ingredients/ownership/edit" &&
+        method === "POST"
+      ) {
+        return jsonResponse({ data: [RAW_RECIPE.recipeIngredientGroups[0]] });
+      }
+      if (url.pathname === "/shopping/de-TEST/additional-items/add" && method === "POST") {
+        return jsonResponse({ data: [RAW_ADDITIONAL_ITEM] });
+      }
+      if (url.pathname === "/shopping/de-TEST/additional-items/edit" && method === "POST") {
+        return jsonResponse({ data: [RAW_ADDITIONAL_ITEM] });
+      }
+      if (
+        url.pathname === "/shopping/de-TEST/additional-items/ownership/edit" &&
+        method === "POST"
+      ) {
+        return jsonResponse({ data: [RAW_ADDITIONAL_ITEM] });
+      }
+      if (url.pathname === "/shopping/de-TEST/additional-items/remove" && method === "POST") {
+        return new Response(null, { status: 204 });
       }
     }
 
@@ -174,5 +256,105 @@ describe("Cookidoo login + getUserInfo (vertical slice)", () => {
       expiresAt: Date.now() / 1000 + 3600,
     });
     expect(client.authData?.accessToken).toBe("restored-access");
+  });
+});
+
+describe("Cookidoo shopping list", () => {
+  async function loggedInClient() {
+    const { fetchMock } = createMockFetch();
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: fetchMock },
+    );
+    await client.login();
+    return client;
+  }
+
+  it("gets the shopping list recipes and ingredient items", async () => {
+    const client = await loggedInClient();
+
+    const recipes = await client.getShoppingListRecipes();
+    expect(recipes).toEqual([
+      {
+        id: "r1",
+        name: "Mini-Pavlova",
+        ingredients: [{ id: "local-ing-1", name: "Zucker", description: "200 g" }],
+        thumbnail: null,
+        image: null,
+        url: "https://cookidoo.test/recipes/recipe/de-TEST/r1",
+      },
+    ]);
+
+    const items = await client.getIngredientItems();
+    expect(items).toEqual([
+      { id: "ing-1", name: "Zucker", isOwned: false, description: "200 g" },
+    ]);
+  });
+
+  it("adds and removes ingredient items for recipes", async () => {
+    const client = await loggedInClient();
+    const added = await client.addIngredientItemsForRecipes(["r1"]);
+    expect(added).toEqual([{ id: "ing-1", name: "Zucker", isOwned: false, description: "200 g" }]);
+    await expect(client.removeIngredientItemsForRecipes(["r1"])).resolves.toBeUndefined();
+  });
+
+  it("adds ingredient items for custom recipes with the CUSTOMER source marker", async () => {
+    const { fetchMock } = createMockFetch();
+    let capturedBody: unknown;
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/shopping/de-TEST/recipes/add" && init?.body) {
+        capturedBody = JSON.parse(init.body as string);
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    await client.addIngredientItemsForCustomRecipes(["cr1"]);
+    expect(capturedBody).toEqual({ recipeIDs: [{ id: "cr1", source: "CUSTOMER" }] });
+  });
+
+  it("removes ingredient items for custom recipes", async () => {
+    const client = await loggedInClient();
+    await expect(
+      client.removeIngredientItemsForCustomRecipes(["cr1"]),
+    ).resolves.toBeUndefined();
+  });
+
+  it("edits ingredient items ownership", async () => {
+    const client = await loggedInClient();
+    const edited = await client.editIngredientItemsOwnership([
+      { id: "ing-1", name: "Zucker", isOwned: true, description: "200 g" },
+    ]);
+    expect(edited).toEqual([{ id: "ing-1", name: "Zucker", isOwned: false, description: "200 g" }]);
+  });
+
+  it("gets, adds, edits and removes additional items", async () => {
+    const client = await loggedInClient();
+
+    const items = await client.getAdditionalItems();
+    expect(items).toEqual([{ id: "a1", name: "Napkins", isOwned: false }]);
+
+    const added = await client.addAdditionalItems(["Napkins"]);
+    expect(added).toEqual([{ id: "a1", name: "Napkins", isOwned: false }]);
+
+    const edited = await client.editAdditionalItems([{ id: "a1", name: "Napkins", isOwned: false }]);
+    expect(edited).toEqual([{ id: "a1", name: "Napkins", isOwned: false }]);
+
+    const editedOwnership = await client.editAdditionalItemsOwnership([
+      { id: "a1", name: "Napkins", isOwned: true },
+    ]);
+    expect(editedOwnership).toEqual([{ id: "a1", name: "Napkins", isOwned: false }]);
+
+    await expect(client.removeAdditionalItems(["a1"])).resolves.toBeUndefined();
+  });
+
+  it("clears the shopping list", async () => {
+    const client = await loggedInClient();
+    await expect(client.clearShoppingList()).resolves.toBeUndefined();
   });
 });
