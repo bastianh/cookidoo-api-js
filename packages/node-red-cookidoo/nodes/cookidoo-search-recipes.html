@@ -1,0 +1,32 @@
+<script type="text/javascript">
+  RED.nodes.registerType("cookidoo-search-recipes", {
+    category: "cookidoo",
+    color: "#f2c12e",
+    defaults: {
+      name: { value: "" },
+      cookidoo: { value: "", type: "cookidoo-config", required: true },
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-search",
+    label: function () {
+      return this.name || "search recipes";
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="cookidoo-search-recipes">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-cookidoo"><i class="fa fa-cog"></i> Cookidoo</label>
+    <input type="text" id="node-input-cookidoo" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="cookidoo-search-recipes">
+  <p>Searches recipes on every input message and sets the result (<code>{ recipes: CookidooSearchRecipeHit[], total: number }</code>) as <code>msg.payload</code>.</p>
+  <p><code>msg.payload</code> in is either a plain search string (shorthand for <code>{ query: ... }</code>) or a full <code>CookidooSearchRecipesOptions</code> object: <code>query</code>, <code>locale</code>, <code>accessories</code>, <code>languages</code>, <code>categories</code>, <code>countries</code>, <code>ingredients</code>, <code>excludeIngredients</code>, <code>tags</code>, <code>ratings</code>, <code>difficulty</code>, <code>preparationTime</code>, <code>totalTime</code>, <code>portions</code>, <code>page</code>, <code>pageSize</code>, <code>tmv</code>.</p>
+</script>

@@ -11,7 +11,9 @@
       "cookidoo-get-user-info": "nodes/cookidoo-get-user-info.js",
       "cookidoo-shopping-recipes": "nodes/cookidoo-shopping-recipes.js",
       "cookidoo-shopping-additional-items": "nodes/cookidoo-shopping-additional-items.js",
-      "cookidoo-clear-shopping-list": "nodes/cookidoo-clear-shopping-list.js"
+      "cookidoo-clear-shopping-list": "nodes/cookidoo-clear-shopping-list.js",
+      "cookidoo-search-recipes": "nodes/cookidoo-search-recipes.js",
+      "cookidoo-get-recipe-details": "nodes/cookidoo-get-recipe-details.js"
     }
   },
   "dependencies": {
