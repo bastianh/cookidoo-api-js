@@ -38,9 +38,13 @@
       });
 
       const statusEl = $("#node-config-login-status");
-      statusEl.text(node.credentials.authData ? "✓ logged in" : "not logged in yet").css(
+      // A `password`-type credential field's real value is never sent to the
+      // browser (see credentials.js:getNodeCredentials in @node-red/runtime)
+      // -- only a `has_<field>` boolean. `node.credentials.authData` itself
+      // is always empty here; checking it would always say "not logged in".
+      statusEl.text(node.credentials.has_authData ? "✓ logged in" : "not logged in yet").css(
         "color",
-        node.credentials.authData ? "green" : "#888",
+        node.credentials.has_authData ? "green" : "#888",
       );
 
       $("#node-config-login-button").on("click", function (evt) {
@@ -74,6 +78,13 @@
             // gone the next time this process restarts.
             statusEl.text("✓ Logged in -- click Deploy to save the tokens").css("color", "green");
             $("#node-config-input-login-password").val("");
+            node.credentials.has_authData = true;
+            // This login happened via our own admin route, entirely outside
+            // the normal edit-dialog-save flow the editor tracks changes
+            // through, so it has no idea anything changed -- the Deploy
+            // button would otherwise stay greyed out despite the server-side
+            // credentials actually having changed.
+            RED.nodes.dirty(true);
           })
           .fail((jqXHR) => {
             const message = jqXHR.responseJSON?.message || "Login failed.";
