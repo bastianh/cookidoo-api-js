@@ -1,0 +1,32 @@
+<script type="text/javascript">
+  RED.nodes.registerType("cookidoo-get-recipe-details", {
+    category: "cookidoo",
+    color: "#f2c12e",
+    defaults: {
+      name: { value: "" },
+      cookidoo: { value: "", type: "cookidoo-config", required: true },
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-cutlery",
+    label: function () {
+      return this.name || "get recipe details";
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="cookidoo-get-recipe-details">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-cookidoo"><i class="fa fa-cog"></i> Cookidoo</label>
+    <input type="text" id="node-input-cookidoo" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="cookidoo-get-recipe-details">
+  <p>Fetches a recipe's full details (ingredients, step groups, nutrition groups, categories, collections, utensils, serving size, active/total time) on every input message.</p>
+  <p><code>msg.payload</code> in is the recipe id (a string, e.g. the <code>id</code> from a <b>cookidoo-search-recipes</b> hit); the result (<code>CookidooShoppingRecipeDetails</code>) replaces it.</p>
+</script>
