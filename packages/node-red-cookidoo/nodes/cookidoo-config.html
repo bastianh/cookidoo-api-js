@@ -1,0 +1,65 @@
+<script type="text/javascript">
+  RED.nodes.registerType("cookidoo-config", {
+    category: "config",
+    defaults: {
+      name: { value: "" },
+      countryCode: { value: "ch", required: true },
+      language: { value: "de-CH", required: true },
+      localizationUrl: { value: "https://cookidoo.ch/foundation/de-CH", required: true },
+    },
+    credentials: {
+      email: { type: "text" },
+      password: { type: "password" },
+    },
+    label: function () {
+      return this.name || `cookidoo (${this.countryCode}/${this.language})`;
+    },
+    oneditprepare: function () {
+      const select = $("#node-config-input-localization");
+      $.getJSON("cookidoo-api-js/localizations", (options) => {
+        select.empty();
+        for (const option of options) {
+          select.append(
+            $("<option>")
+              .val(`${option.countryCode}|${option.language}|${option.url}`)
+              .text(`${option.countryCode} - ${option.language}`),
+          );
+        }
+        select.val(`${this.countryCode}|${this.language}|${this.localizationUrl}`);
+      });
+      select.on("change", () => {
+        const [countryCode, language, url] = select.val().split("|");
+        $("#node-config-input-countryCode").val(countryCode);
+        $("#node-config-input-language").val(language);
+        $("#node-config-input-localizationUrl").val(url);
+      });
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="cookidoo-config">
+  <div class="form-row">
+    <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-config-input-name" placeholder="Name" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-localization"><i class="fa fa-globe"></i> Localization</label>
+    <select id="node-config-input-localization" style="width:70%"></select>
+    <input type="hidden" id="node-config-input-countryCode" />
+    <input type="hidden" id="node-config-input-language" />
+    <input type="hidden" id="node-config-input-localizationUrl" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-email"><i class="fa fa-user"></i> Email</label>
+    <input type="text" id="node-config-input-email" placeholder="you@example.com" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-password"><i class="fa fa-lock"></i> Password</label>
+    <input type="password" id="node-config-input-password" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="cookidoo-config">
+  <p>Holds the Cookidoo account credentials and localization (country/language) shared by all Cookidoo nodes in a flow.</p>
+  <p>Login runs lazily against the official Cookidoo OAuth2/PKCE flow the first time a Cookidoo node uses this config node, and the resulting client (and its access token refresh) is shared by every node that references it.</p>
+</script>
