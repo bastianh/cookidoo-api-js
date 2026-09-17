@@ -10,7 +10,7 @@ const LOCALIZATION = {
 };
 
 /** A hand-rolled fetch stub that plays the CIAM + Cookidoo backends for tests. */
-function createMockFetch(overrides: { password?: string } = {}) {
+function createMockFetch(overrides: { password?: string; errorRedirect?: boolean } = {}) {
   let capturedState: string | null = null;
   const calls: string[] = [];
 
@@ -34,6 +34,12 @@ function createMockFetch(overrides: { password?: string } = {}) {
       }
       if (url.pathname === "/login-srv/login" && method === "POST") {
         const body = new URLSearchParams(init?.body as string);
+        if (overrides.errorRedirect) {
+          return redirectResponse(
+            "https://eu.login.vorwerk.com/ciam/login?error=invalid_username_password&" +
+              "error_description=Given%20username%20or%20password%20is%20invalid",
+          );
+        }
         if (overrides.password && body.get("password") !== overrides.password) {
           return { status: 401, headers: new Headers(), ok: false } as unknown as Response;
         }
@@ -121,6 +127,21 @@ describe("Cookidoo login + getUserInfo (vertical slice)", () => {
       { fetch: fetchMock },
     );
     await expect(client.login()).rejects.toThrow(CookidooAuthException);
+  });
+
+  it("reports a clean auth error when CIAM bounces to its error page on a foreign host", async () => {
+    // Observed live: invalid credentials redirect to eu.login.vorwerk.com
+    // (not ciam.prod.cookidoo.vorwerk-digital.com), which must be reported
+    // as invalid credentials rather than "redirected off the authentication
+    // host" (the check guarding against an actually-untrusted redirect).
+    ({ fetchMock } = createMockFetch({ errorRedirect: true }));
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "wrong-password" },
+      { fetch: fetchMock },
+    );
+    await expect(client.login()).rejects.toThrow(
+      /Given username or password is invalid/,
+    );
   });
 
   it("fetches user info end-to-end after login (discovery + authenticated request)", async () => {
