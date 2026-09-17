@@ -53,3 +53,6 @@ export const EDIT_ADDITIONAL_ITEMS_PATH = "shopping/{language}/additional-items/
 export const EDIT_OWNERSHIP_ADDITIONAL_ITEMS_PATH =
   "shopping/{language}/additional-items/ownership/edit";
 export const REMOVE_ADDITIONAL_ITEMS_PATH = "shopping/{language}/additional-items/remove";
+
+export const RECIPE_PATH = "recipes/recipe/{language}/{id}";
+export const SEARCH_PATH = "search/{locale}";

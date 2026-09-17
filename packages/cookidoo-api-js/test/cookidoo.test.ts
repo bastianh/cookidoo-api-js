@@ -27,6 +27,36 @@ const RAW_RECIPE = {
 
 const RAW_ADDITIONAL_ITEM = { id: "a1", name: "Napkins", isOwned: false };
 
+const RAW_RECIPE_DETAILS = {
+  id: "r907015",
+  title: "Kokos Pralinen",
+  difficulty: "easy",
+  times: [
+    { type: "activeTime", comment: "", quantity: { value: 2700, from: null, to: null } },
+    { type: "totalTime", comment: "", quantity: { value: 32400, from: null, to: null } },
+  ],
+  additionalInformation: [{ content: "Kühl aufbewahren." }],
+  categories: [{ id: "cat-1", title: "Desserts", subtitle: "" }],
+  inCollections: [{ id: "col-1", title: "Weihnachten", recipesCount: { value: 6 } }],
+  recipeIngredientGroups: [
+    {
+      recipeIngredients: [
+        {
+          localId: "ing-1",
+          ingredientNotation: "Kokosraspeln",
+          quantity: { value: 200, from: null, to: null },
+          unitNotation: "g",
+        },
+      ],
+    },
+  ],
+  recipeUtensils: [{ utensilNotation: "Kühlschrank" }],
+  servingSize: { quantity: { value: 50, from: null, to: null }, unitNotation: "Stück" },
+  nutritionGroups: [],
+  recipeStepGroups: [],
+  descriptiveAssets: null,
+};
+
 /** A hand-rolled fetch stub that plays the CIAM + Cookidoo backends for tests. */
 function createMockFetch(overrides: { password?: string; errorRedirect?: boolean } = {}) {
   let capturedState: string | null = null;
@@ -156,6 +186,25 @@ function createMockFetch(overrides: { password?: string; errorRedirect?: boolean
       }
       if (url.pathname === "/shopping/de-TEST/additional-items/remove" && method === "POST") {
         return new Response(null, { status: 204 });
+      }
+
+      if (url.pathname === "/recipes/recipe/.well-known/home") {
+        return jsonResponse({
+          _links: { "recipe:details": { href: "/recipes/recipe/{lang}/{id}" } },
+        });
+      }
+      if (url.pathname === "/recipes/recipe/de-TEST/r907015") {
+        return jsonResponse(RAW_RECIPE_DETAILS);
+      }
+
+      if (url.pathname === "/search/.well-known/home") {
+        return jsonResponse({ _links: { "search:home": { href: "/search/{lang}" } } });
+      }
+      if (url.pathname === "/search/de") {
+        return jsonResponse({
+          recipes: [{ id: "r1", title: "Mini-Pavlova", descriptiveAssets: null }],
+          total: 1,
+        });
       }
     }
 
@@ -356,5 +405,76 @@ describe("Cookidoo shopping list", () => {
   it("clears the shopping list", async () => {
     const client = await loggedInClient();
     await expect(client.clearShoppingList()).resolves.toBeUndefined();
+  });
+});
+
+describe("Cookidoo recipes", () => {
+  async function loggedInClient() {
+    const { fetchMock } = createMockFetch();
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: fetchMock },
+    );
+    await client.login();
+    return client;
+  }
+
+  it("gets recipe details end-to-end (discovery + authenticated request + parsing)", async () => {
+    const client = await loggedInClient();
+    const details = await client.getRecipeDetails("r907015");
+    expect(details.id).toBe("r907015");
+    expect(details.name).toBe("Kokos Pralinen");
+    expect(details.difficulty).toBe("easy");
+    expect(details.activeTime).toBe(2700);
+    expect(details.totalTime).toBe(32400);
+    expect(details.ingredients).toEqual([
+      { id: "ing-1", name: "Kokosraspeln", description: "200 g" },
+    ]);
+    expect(details.servingSize).toBe(50);
+    expect(details.url).toBe("https://cookidoo.test/recipes/recipe/de-TEST/r907015");
+  });
+
+  it("searches recipes, defaulting locale to the first part of the configured language", async () => {
+    const client = await loggedInClient();
+    const result = await client.searchRecipes({ query: "pavlova" });
+    expect(result.total).toBe(1);
+    expect(result.recipes).toEqual([
+      {
+        id: "r1",
+        name: "Mini-Pavlova",
+        thumbnail: null,
+        image: null,
+        url: "https://cookidoo.test/recipes/recipe/de-TEST/r1",
+      },
+    ]);
+  });
+
+  it("sends list/number filters as normalized query params", async () => {
+    const { fetchMock } = createMockFetch();
+    let capturedUrl: URL | null = null;
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/search/de") capturedUrl = url;
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    await client.searchRecipes({
+      accessories: ["includingFriend", "includingSensor"],
+      tmv: ["TM6", "TM7"],
+      preparationTime: 600,
+      page: 2,
+    });
+
+    expect(capturedUrl).not.toBeNull();
+    const params = (capturedUrl as unknown as URL).searchParams;
+    expect(params.get("accessories")).toBe("includingFriend,includingSensor");
+    expect(params.get("tmv")).toBe("TM6,TM7");
+    expect(params.get("preparationTime")).toBe("600");
+    expect(params.get("page")).toBe("2");
   });
 });

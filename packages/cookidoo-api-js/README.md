@@ -65,9 +65,18 @@ await cookidoo.editIngredientItemsOwnership([{ ...ingredients[0], isOwned: true 
 await cookidoo.clearShoppingList();
 ```
 
+Recipes:
+
+```ts
+const results = await cookidoo.searchRecipes({ query: "chicken", tmv: "TM6", portions: 4 });
+
+const details = await cookidoo.getRecipeDetails(results.recipes[0].id);
+console.log(details.ingredients, details.stepGroups, details.nutritionGroups);
+```
+
 ## Status
 
-Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, `getUserInfo`, and the shopping list (recipes, ingredient items, additional items — get/add/remove/edit-ownership, including custom recipes, plus clearing the whole list). More of the Python client's surface (custom recipes, calendar, collections, device/remote-monitoring) is ported incrementally.
+Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items — get/add/remove/edit-ownership, including custom recipes, plus clearing the whole list), and recipes (`searchRecipes`, `getRecipeDetails`). More of the Python client's surface (custom recipes, calendar, collections, device/remote-monitoring) is ported incrementally.
 
 ## Exceptions
 

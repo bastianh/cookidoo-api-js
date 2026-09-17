@@ -61,3 +61,94 @@ export interface RecipeJSON {
   recipeIngredientGroups: ItemJSON[];
   descriptiveAssets?: DescriptiveAssetJSON[] | null;
 }
+
+export interface RecipeDetailsAdditionalInformationJSON {
+  content: string;
+}
+
+export interface RecipeDetailsCategoryJSON {
+  id: string;
+  title: string;
+  subtitle: string;
+}
+
+export interface RecipeDetailsCollectionJSON {
+  id: string;
+  title: string;
+  recipesCount: { value: number };
+}
+
+export interface RecipeDetailsIngredientGroupJSON {
+  recipeIngredients: IngredientJSON[];
+}
+
+export interface RecipeDetailsStepJSON {
+  formattedText: string;
+  title: string;
+}
+
+export interface RecipeDetailsStepGroupJSON {
+  title: string;
+  recipeSteps: RecipeDetailsStepJSON[];
+}
+
+export interface RecipeDetailsUtensilsJSON {
+  utensilNotation: string;
+}
+
+export interface RecipeDetailsServingSizeJSON {
+  quantity: QuantityJSON;
+  unitNotation: string;
+}
+
+export interface RecipeDetailsTimeJSON {
+  quantity: QuantityJSON;
+  type: string;
+  comment: string;
+}
+
+export interface RecipeDetailsNutritionJSON {
+  number: number;
+  type: string;
+  unittype: string;
+}
+
+export interface RecipeDetailsRecipeNutritionJSON {
+  nutritions: RecipeDetailsNutritionJSON[];
+  quantity: number;
+  unitNotation: string;
+}
+
+export interface RecipeDetailsNutritionGroupJSON {
+  name: string;
+  recipeNutritions: RecipeDetailsRecipeNutritionJSON[];
+}
+
+export interface RecipeDetailsJSON {
+  id: string;
+  title: string;
+  difficulty: string;
+  additionalInformation: RecipeDetailsAdditionalInformationJSON[];
+  categories: RecipeDetailsCategoryJSON[];
+  inCollections: RecipeDetailsCollectionJSON[];
+  recipeIngredientGroups: RecipeDetailsIngredientGroupJSON[];
+  recipeStepGroups?: RecipeDetailsStepGroupJSON[];
+  recipeUtensils: RecipeDetailsUtensilsJSON[];
+  servingSize: RecipeDetailsServingSizeJSON;
+  times: RecipeDetailsTimeJSON[];
+  nutritionGroups?: RecipeDetailsNutritionGroupJSON[];
+  descriptiveAssets?: DescriptiveAssetJSON[] | null;
+}
+
+export interface SearchRecipeHitJSON {
+  id?: string;
+  title?: string;
+  name?: string;
+  descriptiveAssets?: DescriptiveAssetJSON[] | null;
+}
+
+export interface SearchResultJSON {
+  data?: SearchRecipeHitJSON[];
+  recipes?: SearchRecipeHitJSON[];
+  total?: number;
+}

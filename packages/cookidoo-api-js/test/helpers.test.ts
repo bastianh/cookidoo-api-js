@@ -5,11 +5,14 @@ import {
   cookidooIngredientFromJson,
   cookidooIngredientItemFromJson,
   cookidooQuantityFromJson,
+  cookidooRecipeDetailsFromJson,
   cookidooRecipeFromJson,
+  cookidooSearchResultFromJson,
   cookidooUserInfoFromJson,
   getCountryOptions,
   getLanguageOptions,
   getLocalizationOptions,
+  normalizeListParam,
 } from "../src/helpers.js";
 
 describe("cookidooUserInfoFromJson", () => {
@@ -172,6 +175,178 @@ describe("cookidooRecipeFromJson", () => {
     expect(shoppingRecipe.thumbnail).toBeNull();
     expect(shoppingRecipe.image).toBeNull();
     expect(shoppingRecipe.url).toBe("");
+  });
+});
+
+describe("normalizeListParam", () => {
+  it("passes a plain string through unchanged", () => {
+    expect(normalizeListParam("chicken")).toBe("chicken");
+  });
+
+  it("joins a list into a comma-separated string, dropping falsy entries", () => {
+    expect(normalizeListParam(["a", "", "b"])).toBe("a,b");
+  });
+
+  it("returns undefined for undefined", () => {
+    expect(normalizeListParam(undefined)).toBeUndefined();
+  });
+});
+
+describe("cookidooSearchResultFromJson", () => {
+  it("reads recipes from `recipes`, defaulting total to the hit count", () => {
+    const result = cookidooSearchResultFromJson(
+      {
+        recipes: [
+          { id: "r123456", title: "Chicken Soup", descriptiveAssets: null },
+          { id: "r654321", name: "Chicken Salad", descriptiveAssets: null },
+        ],
+      },
+      { countryCode: "ch", language: "de-CH", url: "https://cookidoo.ch/foundation/de-CH" },
+    );
+    expect(result.total).toBe(2);
+    expect(result.recipes).toEqual([
+      {
+        id: "r123456",
+        name: "Chicken Soup",
+        thumbnail: null,
+        image: null,
+        url: "https://cookidoo.ch/recipes/recipe/de-CH/r123456",
+      },
+      {
+        id: "r654321",
+        name: "Chicken Salad",
+        thumbnail: null,
+        image: null,
+        url: "https://cookidoo.ch/recipes/recipe/de-CH/r654321",
+      },
+    ]);
+  });
+
+  it("prefers `data` over `recipes` and uses an explicit total when present", () => {
+    const result = cookidooSearchResultFromJson({
+      data: [{ id: "r1", title: "A" }],
+      recipes: [{ id: "r2", title: "B" }],
+      total: 42,
+    });
+    expect(result.recipes).toHaveLength(1);
+    expect(result.recipes[0]?.id).toBe("r1");
+    expect(result.total).toBe(42);
+  });
+
+  it("returns an empty result when neither `data` nor `recipes` is present", () => {
+    expect(cookidooSearchResultFromJson({})).toEqual({ recipes: [], total: 0 });
+  });
+});
+
+describe("cookidooRecipeDetailsFromJson", () => {
+  const rawRecipeDetails = {
+    id: "r907015",
+    title: "Kokos Pralinen",
+    difficulty: "easy",
+    times: [
+      { type: "activeTime", comment: "", quantity: { value: 2700, from: null, to: null } },
+      { type: "totalTime", comment: "", quantity: { value: 32400, from: null, to: null } },
+    ],
+    additionalInformation: [{ content: "Kühl aufbewahren." }],
+    categories: [{ id: "cat-1", title: "Desserts", subtitle: "" }],
+    inCollections: [{ id: "col-1", title: "Weihnachten", recipesCount: { value: 6 } }],
+    recipeIngredientGroups: [
+      {
+        recipeIngredients: [
+          {
+            localId: "ing-1",
+            ingredientNotation: "Kokosraspeln",
+            quantity: { value: 200, from: null, to: null },
+            unitNotation: "g",
+          },
+        ],
+      },
+    ],
+    recipeUtensils: [{ utensilNotation: "Kühlschrank" }],
+    servingSize: { quantity: { value: 50, from: null, to: null }, unitNotation: "Stück" },
+    nutritionGroups: [
+      {
+        name: "",
+        recipeNutritions: [
+          {
+            quantity: 1,
+            unitNotation: "Stück",
+            nutritions: [{ type: "kcal", number: 65.7, unittype: "kcal" }],
+          },
+        ],
+      },
+    ],
+    recipeStepGroups: [
+      {
+        title: "",
+        recipeSteps: [{ title: "1", formattedText: "<NOBR>Mix.</NOBR>" }],
+      },
+    ],
+    descriptiveAssets: null,
+  };
+
+  it("maps id/name/difficulty/times/ingredients/categories/collections/utensils", () => {
+    const details = cookidooRecipeDetailsFromJson(rawRecipeDetails as never, {
+      countryCode: "ch",
+      language: "de-CH",
+      url: "https://cookidoo.ch/foundation/de-CH",
+    });
+    expect(details.id).toBe("r907015");
+    expect(details.name).toBe("Kokos Pralinen");
+    expect(details.difficulty).toBe("easy");
+    expect(details.activeTime).toBe(2700);
+    expect(details.totalTime).toBe(32400);
+    expect(details.notes).toEqual(["Kühl aufbewahren."]);
+    expect(details.categories).toEqual([{ id: "cat-1", name: "Desserts", notes: "" }]);
+    expect(details.collections).toEqual([{ id: "col-1", name: "Weihnachten", totalRecipes: 6 }]);
+    expect(details.ingredients).toEqual([
+      { id: "ing-1", name: "Kokosraspeln", description: "200 g" },
+    ]);
+    expect(details.utensils).toEqual(["Kühlschrank"]);
+    expect(details.servingSize).toBe(50);
+    expect(details.nutritionGroups).toEqual([
+      {
+        name: "",
+        recipeNutritions: [
+          {
+            quantity: 1,
+            unitNotation: "Stück",
+            nutritions: [{ type: "kcal", number: 65.7, unittype: "kcal" }],
+          },
+        ],
+      },
+    ]);
+    expect(details.stepGroups).toEqual([
+      { title: "", recipeSteps: [{ title: "1", formattedText: "<NOBR>Mix.</NOBR>" }] },
+    ]);
+    expect(details.url).toBe("https://cookidoo.ch/recipes/recipe/de-CH/r907015");
+  });
+
+  it("throws when activeTime is missing from times", () => {
+    const withoutActiveTime = {
+      ...rawRecipeDetails,
+      times: [rawRecipeDetails.times[1]],
+    };
+    expect(() => cookidooRecipeDetailsFromJson(withoutActiveTime as never)).toThrow(
+      /activeTime/,
+    );
+  });
+
+  it("throws when totalTime is missing from times", () => {
+    const withoutTotalTime = {
+      ...rawRecipeDetails,
+      times: [rawRecipeDetails.times[0]],
+    };
+    expect(() => cookidooRecipeDetailsFromJson(withoutTotalTime as never)).toThrow(/totalTime/);
+  });
+
+  it("defaults nutritionGroups/stepGroups to empty arrays when absent", () => {
+    const { nutritionGroups, recipeStepGroups, ...rest } = rawRecipeDetails;
+    void nutritionGroups;
+    void recipeStepGroups;
+    const details = cookidooRecipeDetailsFromJson(rest as never);
+    expect(details.nutritionGroups).toEqual([]);
+    expect(details.stepGroups).toEqual([]);
   });
 });
 
