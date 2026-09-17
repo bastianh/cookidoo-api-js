@@ -42,3 +42,14 @@ export const OAUTH_SCOPE = "openid profile email offline offline_access";
 export const TOKEN_EXPIRY_MARGIN_S = 300;
 
 export const COMMUNITY_PROFILE_PATH = "community/profile/{language}";
+
+export const SHOPPING_LIST_RECIPES_PATH = "shopping/{language}";
+export const EDIT_OWNERSHIP_INGREDIENT_ITEMS_PATH =
+  "shopping/{language}/owned-ingredients/ownership/edit";
+export const ADD_INGREDIENT_ITEMS_FOR_RECIPES_PATH = "shopping/{language}/recipes/add";
+export const REMOVE_INGREDIENT_ITEMS_FOR_RECIPES_PATH = "shopping/{language}/recipes/remove";
+export const ADD_ADDITIONAL_ITEMS_PATH = "shopping/{language}/additional-items/add";
+export const EDIT_ADDITIONAL_ITEMS_PATH = "shopping/{language}/additional-items/edit";
+export const EDIT_OWNERSHIP_ADDITIONAL_ITEMS_PATH =
+  "shopping/{language}/additional-items/ownership/edit";
+export const REMOVE_ADDITIONAL_ITEMS_PATH = "shopping/{language}/additional-items/remove";

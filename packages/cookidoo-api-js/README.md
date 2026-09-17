@@ -49,9 +49,25 @@ cookidoo.loadToken("./cookidoo-token.json");
 // automatically on the next request if it has expired.
 ```
 
+Shopping list:
+
+```ts
+const recipes = await cookidoo.getShoppingListRecipes();
+const ingredients = await cookidoo.getIngredientItems();
+const additional = await cookidoo.getAdditionalItems();
+
+await cookidoo.addIngredientItemsForRecipes(["recipe-id-1"]);
+await cookidoo.addAdditionalItems(["Napkins"]);
+
+// Toggle an ingredient's owned/checked-off state
+await cookidoo.editIngredientItemsOwnership([{ ...ingredients[0], isOwned: true }]);
+
+await cookidoo.clearShoppingList();
+```
+
 ## Status
 
-Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, and `getUserInfo` as a representative endpoint. More of the Python client's surface (shopping list, custom recipes, calendar, collections, device/remote-monitoring) is ported incrementally.
+Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, `getUserInfo`, and the shopping list (recipes, ingredient items, additional items — get/add/remove/edit-ownership, including custom recipes, plus clearing the whole list). More of the Python client's surface (custom recipes, calendar, collections, device/remote-monitoring) is ported incrementally.
 
 ## Exceptions
 

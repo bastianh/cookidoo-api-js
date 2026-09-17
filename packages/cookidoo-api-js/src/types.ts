@@ -83,3 +83,36 @@ export interface CookidooAuthData {
   refreshToken: string;
   expiresAt: number;
 }
+
+/** An ingredient of a recipe (as opposed to a {@link CookidooIngredientItem} on the shopping list). */
+export interface CookidooIngredient {
+  id: string;
+  name: string;
+  /** The quantity and unit (e.g. "200 g"), or the ingredient name alone if neither is known. */
+  description: string;
+}
+
+/** A shopping-list entry shared by ingredient and additional items. */
+export interface CookidooItem {
+  id: string;
+  name: string;
+  isOwned: boolean;
+}
+
+/** An ingredient on the shopping list, contributed by one or more recipes. */
+export interface CookidooIngredientItem extends CookidooItem {
+  description: string;
+}
+
+/** A free-form item added to the shopping list directly, not tied to a recipe. */
+export type CookidooAdditionalItem = CookidooItem;
+
+/** A recipe with (at least) one ingredient on the shopping list. */
+export interface CookidooShoppingRecipe {
+  id: string;
+  name: string;
+  ingredients: CookidooIngredient[];
+  thumbnail: string | null;
+  image: string | null;
+  url: string;
+}

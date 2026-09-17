@@ -11,12 +11,23 @@
  * serving a possibly-stale path.
  *
  * Only the services/rels actually consumed by this library are fetched (see
- * {@link ENDPOINT_RELS}), not a full recursive crawl. This list currently
- * only covers what the ported vertical slice (login + `getUserInfo`) needs;
- * it grows as more API methods are ported from the Python client.
+ * {@link ENDPOINT_RELS}), not a full recursive crawl. This list grows as
+ * more API methods are ported from the Python client.
  */
 
-import { COMMUNITY_PROFILE_PATH, DEFAULT_API_HEADERS, LOGIN_HEADERS } from "./const.js";
+import {
+  ADD_ADDITIONAL_ITEMS_PATH,
+  ADD_INGREDIENT_ITEMS_FOR_RECIPES_PATH,
+  COMMUNITY_PROFILE_PATH,
+  DEFAULT_API_HEADERS,
+  EDIT_ADDITIONAL_ITEMS_PATH,
+  EDIT_OWNERSHIP_ADDITIONAL_ITEMS_PATH,
+  EDIT_OWNERSHIP_INGREDIENT_ITEMS_PATH,
+  LOGIN_HEADERS,
+  REMOVE_ADDITIONAL_ITEMS_PATH,
+  REMOVE_INGREDIENT_ITEMS_FOR_RECIPES_PATH,
+  SHOPPING_LIST_RECIPES_PATH,
+} from "./const.js";
 import { CookidooParseException, CookidooRequestException } from "./exceptions.js";
 import type { FetchLike } from "./http.js";
 
@@ -33,6 +44,17 @@ export const ENDPOINT_RELS: Readonly<Record<string, readonly [string, string]>> 
     "community/profile",
     COMMUNITY_PROFILE_PATH,
   ],
+  "pantry:home": ["shopping", SHOPPING_LIST_RECIPES_PATH],
+  "pantry:edit-ingredients-ownership": ["shopping", EDIT_OWNERSHIP_INGREDIENT_ITEMS_PATH],
+  "pantry:recipe-ingredients": ["shopping", ADD_INGREDIENT_ITEMS_FOR_RECIPES_PATH],
+  "pantry:remove-recipe": ["shopping", REMOVE_INGREDIENT_ITEMS_FOR_RECIPES_PATH],
+  "pantry:add-additional-items-v2": ["shopping", ADD_ADDITIONAL_ITEMS_PATH],
+  "pantry:edit-additional-items": ["shopping", EDIT_ADDITIONAL_ITEMS_PATH],
+  "pantry:edit-additional-items-ownership": [
+    "shopping",
+    EDIT_OWNERSHIP_ADDITIONAL_ITEMS_PATH,
+  ],
+  "pantry:remove-additional-items": ["shopping", REMOVE_ADDITIONAL_ITEMS_PATH],
 };
 
 const DOMAIN_PREFIX_RE = /^https?:\/\/[^/]+/;

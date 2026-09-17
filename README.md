@@ -13,7 +13,7 @@ The developers of this project are in no way endorsed by or affiliated with Cook
 
 ## Status
 
-This is an early, incremental port. It currently covers the OAuth2/PKCE login flow, access-token refresh, token persistence, and one representative endpoint (`getUserInfo`) to prove the whole path end-to-end. Further endpoints (shopping list, custom recipes, calendar, device/remote-monitoring, ...) are ported incrementally from the [Python client](https://github.com/miaucl/cookidoo-api).
+This is an early, incremental port. It currently covers the OAuth2/PKCE login flow, access-token refresh, token persistence, `getUserInfo`, and the shopping list (recipes, ingredient items, additional items, clearing the list). Further endpoints (custom recipes, calendar, collections, device/remote-monitoring, ...) are ported incrementally from the [Python client](https://github.com/miaucl/cookidoo-api).
 
 ## Dev setup
 
