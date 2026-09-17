@@ -6,7 +6,8 @@
     "build": "pnpm --if-present -r run build",
     "test": "pnpm --if-present -r run test",
     "lint": "eslint .",
-    "typecheck": "pnpm --if-present -r run typecheck"
+    "typecheck": "pnpm --if-present -r run typecheck",
+    "dev:node-red": "node scripts/watch-node-red.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
