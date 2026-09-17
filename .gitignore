@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+coverage/
+*.log
+.DS_Store
+
+# Reference checkout of the upstream Python library, kept locally for porting
+# reference but not part of this JS monorepo.
+cookidoo-api/
