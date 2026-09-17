@@ -69,7 +69,10 @@
           }),
         })
           .done(() => {
-            statusEl.text("✓ Logged in").css("color", "green");
+            // The tokens are live immediately, but Node-RED only writes
+            // credentials to disk as part of a Deploy -- without one, they're
+            // gone the next time this process restarts.
+            statusEl.text("✓ Logged in -- click Deploy to save the tokens").css("color", "green");
             $("#node-config-input-login-password").val("");
           })
           .fail((jqXHR) => {
@@ -111,4 +114,5 @@
 <script type="text/html" data-help-name="cookidoo-config">
   <p>Holds the Cookidoo localization (country/language) and OAuth2 tokens shared by all Cookidoo nodes in a flow.</p>
   <p>Enter the account email/password and click <b>Login</b> to run the official Cookidoo OAuth2/PKCE flow once. Only the resulting access/refresh tokens are stored as this node's credentials -- the password itself is never persisted, and the token is refreshed automatically (rotating what's stored) as it's used.</p>
+  <p><b>Click Deploy after logging in.</b> The tokens take effect immediately, but -- like all Node-RED node credentials -- they are only written to disk as part of a Deploy. Without one, they're lost the next time Node-RED restarts and you'll need to log in again. This also applies to a background token refresh that happens to rotate the tokens between deploys.</p>
 </script>
