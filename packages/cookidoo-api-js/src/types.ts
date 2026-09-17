@@ -60,6 +60,17 @@ export interface CookidooUserInfo {
   username: string;
   description: string | null;
   picture: string | null;
+  /**
+   * The full, unparsed `community-profile` response as returned by
+   * Cookidoo. It carries fields not otherwise modeled above -- observed:
+   * `isPublic`, `userInfo.pictureTemplate`, `savedSearches`,
+   * `foodPreferences`, `meta.cloudinaryPublicId`, `thermomixes` -- and any
+   * others Cookidoo returns. Intentionally untyped beyond that: this is an
+   * escape hatch for fields the parsed properties above don't cover, not a
+   * stable, versioned shape -- verify against a live response before
+   * depending on anything in here.
+   */
+  raw: Record<string, unknown>;
 }
 
 /**

@@ -69,7 +69,10 @@ function createMockFetch(overrides: { password?: string; errorRedirect?: boolean
       if (url.pathname === "/community/profile/de-TEST") {
         return jsonResponse({
           id: "user-1",
+          isPublic: false,
           userInfo: { username: "chef", description: null, picture: null },
+          savedSearches: [{ id: "default", search: { countries: ["ch"] } }],
+          meta: { cloudinaryPublicId: "abc123" },
         });
       }
     }
@@ -151,7 +154,16 @@ describe("Cookidoo login + getUserInfo (vertical slice)", () => {
     );
     await client.login();
     const info = await client.getUserInfo();
-    expect(info).toEqual({ id: "user-1", username: "chef", description: null, picture: null });
+    expect(info.id).toBe("user-1");
+    expect(info.username).toBe("chef");
+    expect(info.description).toBeNull();
+    expect(info.picture).toBeNull();
+    // Fields the parsed properties above don't cover still reach the caller.
+    expect(info.raw.isPublic).toBe(false);
+    expect(info.raw.savedSearches).toEqual([
+      { id: "default", search: { countries: ["ch"] } },
+    ]);
+    expect(info.raw.meta).toEqual({ cloudinaryPublicId: "abc123" });
   });
 
   it("restores a previous session via applyAuthData without a network call", () => {

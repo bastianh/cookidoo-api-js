@@ -32,7 +32,9 @@ const cookidoo = new Cookidoo({
 await cookidoo.login();
 
 const userInfo = await cookidoo.getUserInfo();
-console.log(userInfo);
+console.log(userInfo.username);
+// `userInfo.raw` carries the full, unparsed community-profile response, for
+// fields not otherwise modeled (isPublic, savedSearches, foodPreferences, ...)
 
 // Persist the tokens for reuse without a fresh login next time
 cookidoo.saveToken("./cookidoo-token.json");

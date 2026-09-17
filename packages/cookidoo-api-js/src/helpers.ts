@@ -14,6 +14,7 @@ export function cookidooUserInfoFromJson(
     username: userInfo.username,
     description: userInfo.description ?? null,
     picture: userInfo.picture,
+    raw: profile as unknown as Record<string, unknown>,
   };
 }
 
