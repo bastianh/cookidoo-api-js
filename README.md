@@ -30,12 +30,21 @@ This is a [pnpm workspace](https://pnpm.io/workspaces); each package also has it
 
 A `docker-compose.yml` at the repo root spins up an official Node-RED image with the two packages mounted straight from your working tree, so you can drag the Cookidoo nodes into a flow and try them against a real account without publishing anything.
 
+For a one-off look:
+
 ```bash
 pnpm --filter cookidoo-api-js build   # dist/ has to exist before the container starts
 docker compose up
 ```
 
-Then open <http://localhost:1880>. See [`docker-compose.yml`](docker-compose.yml) for details; re-run the build and restart the container (`docker compose restart`) to pick up code changes, since Node-RED only loads node code on startup. This setup is for local, unauthenticated manual testing only — do not expose port 1880 beyond your machine.
+For active development, with auto-reload on every change (two terminals):
+
+```bash
+pnpm --filter cookidoo-api-js dev     # tsup --watch, rebuilds dist/ on src/ changes
+pnpm dev:node-red                     # brings the stack up and restarts it whenever dist/ or nodes/ actually change
+```
+
+Either way, open <http://localhost:1880>. See [`docker-compose.yml`](docker-compose.yml) and [`scripts/watch-node-red.mjs`](scripts/watch-node-red.mjs) for details — Node-RED only loads node code at process startup, so `dev:node-red` restarts the container for you instead of `docker compose restart`, but only when the built/node files actually changed (content-hashed, not just "a file event fired"), so it settles instead of restart-looping. This setup is for local, unauthenticated manual testing only — do not expose port 1880 beyond your machine.
 
 ## Credits
 

@@ -8,13 +8,23 @@
 # Node-RED discovers any node module dropped into its user directory's
 # node_modules on startup, no entry in /data/package.json required.
 #
-# Usage:
+# One-off manual testing:
 #   pnpm --filter cookidoo-api-js build   # dist/ must exist first
 #   docker compose up
 #   open http://localhost:1880
 #
 # Node code is only loaded at startup, so after rebuilding run:
 #   docker compose restart
+#
+# Active development, with auto-reload on every change (two terminals):
+#   pnpm --filter cookidoo-api-js dev     # tsup --watch, rebuilds dist/ on src/ changes
+#   pnpm dev:node-red                     # brings this stack up and restarts it on dist/ or nodes/ changes
+#
+# (`docker compose watch` looks like the built-in fit for this, but its sync
+# step writes into these bind-mounted paths, which -- since a bind mount
+# reflects a container write straight back to the host -- retriggers the
+# same watcher and restart-loops. `pnpm dev:node-red` (scripts/watch-node-red.mjs)
+# just watches and calls `docker compose restart`, no file syncing involved.)
 #
 # This is for local, unauthenticated manual testing only -- do not expose
 # port 1880 beyond your machine.
