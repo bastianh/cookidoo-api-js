@@ -1,0 +1,58 @@
+<script type="text/javascript">
+  RED.nodes.registerType("cookidoo-shopping-recipes", {
+    category: "cookidoo",
+    color: "#f2c12e",
+    defaults: {
+      name: { value: "" },
+      cookidoo: { value: "", type: "cookidoo-config", required: true },
+      operation: { value: "get-recipes", required: true },
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-cutlery",
+    label: function () {
+      return this.name || this.operation;
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="cookidoo-shopping-recipes">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-cookidoo"><i class="fa fa-cog"></i> Cookidoo</label>
+    <input type="text" id="node-input-cookidoo" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-operation"><i class="fa fa-wrench"></i> Operation</label>
+    <select id="node-input-operation" style="width:70%">
+      <option value="get-recipes">get shopping list recipes</option>
+      <option value="get-ingredient-items">get ingredient items</option>
+      <option value="add-ingredients">add ingredients (recipes)</option>
+      <option value="remove-ingredients">remove ingredients (recipes)</option>
+      <option value="add-ingredients-custom">add ingredients (custom recipes)</option>
+      <option value="remove-ingredients-custom">remove ingredients (custom recipes)</option>
+      <option value="edit-ingredients-ownership">edit ingredient ownership</option>
+    </select>
+  </div>
+  <div class="form-tips">
+    Overridable per message with <code>msg.operation</code>. See the node's help for the expected <code>msg.payload</code> per operation.
+  </div>
+</script>
+
+<script type="text/html" data-help-name="cookidoo-shopping-recipes">
+  <p>Shopping-list operations scoped to recipes and their ingredient items. The operation can be set here or overridden per message with <code>msg.operation</code>.</p>
+  <table class="cookidoo-op-table" style="width:100%">
+    <tr><th align="left">Operation</th><th align="left"><code>msg.payload</code> in</th><th align="left"><code>msg.payload</code> out</th></tr>
+    <tr><td><code>get-recipes</code></td><td>-</td><td><code>CookidooShoppingRecipe[]</code></td></tr>
+    <tr><td><code>get-ingredient-items</code></td><td>-</td><td><code>CookidooIngredientItem[]</code></td></tr>
+    <tr><td><code>add-ingredients</code></td><td>recipe id <code>string[]</code></td><td><code>CookidooIngredientItem[]</code></td></tr>
+    <tr><td><code>remove-ingredients</code></td><td>recipe id <code>string[]</code></td><td>-</td></tr>
+    <tr><td><code>add-ingredients-custom</code></td><td>custom recipe id <code>string[]</code></td><td><code>CookidooIngredientItem[]</code></td></tr>
+    <tr><td><code>remove-ingredients-custom</code></td><td>custom recipe id <code>string[]</code></td><td>-</td></tr>
+    <tr><td><code>edit-ingredients-ownership</code></td><td><code>CookidooIngredientItem[]</code> (with the desired <code>isOwned</code>)</td><td>the edited <code>CookidooIngredientItem[]</code></td></tr>
+  </table>
+  <p>Typical flow: <code>get-ingredient-items</code> &rarr; toggle <code>isOwned</code> on the items you want &rarr; <code>edit-ingredients-ownership</code>.</p>
+</script>
