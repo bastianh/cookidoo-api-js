@@ -1,0 +1,23 @@
+{
+  "name": "node-red-cookidoo",
+  "version": "0.1.0",
+  "description": "Node-RED nodes for Cookidoo, built on cookidoo-api-js.",
+  "license": "MIT",
+  "keywords": ["node-red", "cookidoo", "vorwerk", "thermomix"],
+  "node-red": {
+    "version": ">=3.0.0",
+    "nodes": {
+      "cookidoo-config": "nodes/cookidoo-config.js",
+      "cookidoo-get-user-info": "nodes/cookidoo-get-user-info.js"
+    }
+  },
+  "dependencies": {
+    "cookidoo-api-js": "workspace:^"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18.17"
+  }
+}
