@@ -8,7 +8,7 @@ The developers of this package are in no way endorsed by or affiliated with Cook
 
 ## Nodes
 
-- **cookidoo-config** (config node) — holds the account email/password (via Node-RED's credential store) and localization (country/language). Logs in lazily, on first use by any node that references it, and shares that one client/session across all of them.
+- **cookidoo-config** (config node) — holds the localization (country/language) and OAuth2 tokens for one Cookidoo account, shared by every node that references it. Its edit dialog has an email/password field and a **Login** button: clicking it runs the OAuth2/PKCE login once through a Node-RED admin route and stores only the resulting access/refresh tokens as this node's credentials — the password itself is never persisted, only used for that one request. Tokens are refreshed automatically as they're used, and the refreshed (rotated) tokens are written back the same way, so no redeploy or repeated login is needed as long as the refresh token stays valid.
 - **cookidoo-get-user-info** — on each input message, fetches the signed-in user's profile and sets it as `msg.payload`.
 
 ## Status
