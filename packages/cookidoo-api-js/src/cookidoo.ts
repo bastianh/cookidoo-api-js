@@ -375,7 +375,21 @@ export class Cookidoo {
           code = query.get("code");
           break;
         }
-        url = new URL(location, url).toString();
+        const nextUrl = new URL(location, url);
+        // Rejected credentials bounce to an *error* page -- observed on a
+        // different host (eu.login.vorwerk.com) than CIAM_BASE_URL itself,
+        // which would otherwise trip assertCiamOrigin below. Recognized by
+        // its `error` query param, so it's reported as a clean auth failure
+        // instead of "redirected off the authentication host", without
+        // weakening that check for an actually-untrusted redirect.
+        const error = nextUrl.searchParams.get("error");
+        if (error !== null) {
+          const description = nextUrl.searchParams.get("error_description");
+          throw new CookidooAuthException(
+            `Login failed: ${description ?? error}. Please check your email and password.`,
+          );
+        }
+        url = nextUrl.toString();
         Cookidoo.assertCiamOrigin(url);
         method = "GET";
         body = undefined;
