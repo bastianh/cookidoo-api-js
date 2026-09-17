@@ -59,18 +59,22 @@ module.exports = function (RED) {
       },
       {
         onAuthDataUpdate: (authData) => {
-          // The server rotates the refresh token on every refresh; persist
-          // whatever it hands back so a later restart doesn't retry with a
-          // retired one.
+          // The server rotates the refresh token on every refresh; hand the
+          // new one to addCredentials so this node keeps working. Node-RED
+          // only writes credentials to disk on a Deploy though (there is no
+          // public API for a node to do that itself), so this alone does
+          // NOT survive a restart -- the status below says as much.
           node.credentials.authData = JSON.stringify(authData);
           RED.nodes.addCredentials(node.id, node.credentials);
-          node.status({ fill: "green", shape: "dot", text: "logged in" });
+          node.status({ fill: "yellow", shape: "dot", text: "token refreshed - deploy to save" });
         },
       },
     );
 
     if (node.credentials.authData) {
       try {
+        // Loaded from disk (this node was already deployed with tokens), so
+        // this state is durable -- unlike the yellow ones below.
         node.client.applyAuthData(JSON.parse(node.credentials.authData));
         node.status({ fill: "green", shape: "dot", text: "logged in" });
       } catch {
@@ -112,10 +116,15 @@ module.exports = function (RED) {
 
   /**
    * Performs a one-off Cookidoo login with the posted email/password and
-   * persists only the resulting OAuth2 tokens as this node's credentials --
+   * stashes only the resulting OAuth2 tokens as this node's credentials --
    * the password is used for this one request and never stored. If the
    * config node is already deployed, its live client is updated immediately
-   * so running flows pick up the new tokens without a redeploy.
+   * so running flows pick up the new tokens right away.
+   *
+   * Note this does NOT itself persist anything to disk: like all Node-RED
+   * credentials, that only happens on a Deploy (there is no public API for
+   * a node to trigger that on its own) -- the client-side success message
+   * and this node's status both say so.
    */
   RED.httpAdmin.post(
     "/cookidoo-api-js/login",
@@ -150,7 +159,7 @@ module.exports = function (RED) {
         if (existingNode && existingNode.type === "cookidoo-config") {
           existingNode.credentials = credentials;
           existingNode.client.applyAuthData(client.authData);
-          existingNode.status({ fill: "green", shape: "dot", text: "logged in" });
+          existingNode.status({ fill: "yellow", shape: "dot", text: "logged in - deploy to save" });
         }
 
         res.json({ success: true });
