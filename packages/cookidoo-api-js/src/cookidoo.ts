@@ -21,15 +21,20 @@ import {
 import {
   cookidooAdditionalItemFromJson,
   cookidooIngredientItemFromJson,
+  cookidooRecipeDetailsFromJson,
   cookidooRecipeFromJson,
+  cookidooSearchResultFromJson,
   cookidooUserInfoFromJson,
+  normalizeListParam,
 } from "./helpers.js";
 import { CookieJar, jarRequest, type FetchLike } from "./http.js";
 import type {
   AdditionalItemJSON,
   CommunityProfileJSON,
   ItemJSON,
+  RecipeDetailsJSON,
   RecipeJSON,
+  SearchResultJSON,
 } from "./raw-types.js";
 import {
   defaultConfig,
@@ -38,7 +43,10 @@ import {
   type CookidooConfig,
   type CookidooIngredientItem,
   type CookidooLocalizationConfig,
+  type CookidooSearchRecipesOptions,
+  type CookidooSearchResult,
   type CookidooShoppingRecipe,
+  type CookidooShoppingRecipeDetails,
   type CookidooUserInfo,
 } from "./types.js";
 import { resolveEndpointPaths } from "./well-known.js";
@@ -409,6 +417,67 @@ export class Cookidoo {
     await this.ensureEndpoints();
     const url = this.endpointUrl("pantry:home");
     await this.requestJson("DELETE", url, "clear shopping list", { parseResponse: false });
+  }
+
+  /** Get the full details (ingredients, steps, nutrition, ...) of a recipe. */
+  async getRecipeDetails(id: string): Promise<CookidooShoppingRecipeDetails> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("recipe:details", { id });
+    const result = await this.requestJson("GET", url, "loading recipe details");
+    const data = Cookidoo.ensureMapping(result, "loading recipe details");
+    return Cookidoo.parseResult("loading recipe details", () =>
+      cookidooRecipeDetailsFromJson(data as unknown as RecipeDetailsJSON, this.cfg.localization),
+    );
+  }
+
+  /**
+   * Search recipes.
+   *
+   * `options.locale` defaults to the first part of the configured language
+   * (e.g. "de-CH" -> "de"); everything else is an optional filter.
+   */
+  async searchRecipes(
+    options: CookidooSearchRecipesOptions = {},
+  ): Promise<CookidooSearchResult> {
+    const locale = options.locale ?? this.cfg.localization.language.split("-")[0]!;
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("search:home", { locale });
+
+    const params: Record<string, string> = {};
+    if (options.query !== undefined) params.query = options.query;
+    const setListParam = (key: string, value: string | string[] | undefined): void => {
+      const normalized = normalizeListParam(value);
+      if (normalized) params[key] = normalized;
+    };
+    setListParam("accessories", options.accessories);
+    setListParam("languages", options.languages);
+    setListParam("categories", options.categories);
+    setListParam("countries", options.countries);
+    setListParam("ingredients", options.ingredients);
+    setListParam("excludeIngredients", options.excludeIngredients);
+    setListParam("tags", options.tags);
+    setListParam("ratings", options.ratings);
+    if (options.difficulty !== undefined) params.difficulty = options.difficulty;
+    if (options.preparationTime !== undefined) {
+      params.preparationTime = String(options.preparationTime);
+    }
+    if (options.totalTime !== undefined) params.totalTime = String(options.totalTime);
+    if (options.portions !== undefined) params.portions = String(options.portions);
+    if (options.page !== undefined) params.page = String(options.page);
+    if (options.pageSize !== undefined) params.pageSize = String(options.pageSize);
+    if (options.tmv !== undefined) {
+      const tmv = normalizeListParam(
+        Array.isArray(options.tmv) ? options.tmv.map(String) : String(options.tmv),
+      );
+      if (tmv) params.tmv = tmv;
+    }
+
+    const result = await this.requestJson("GET", url, "search recipes", { params });
+    if (result === null) return { recipes: [], total: 0 };
+    const data = Cookidoo.ensureMapping(result, "search recipes");
+    return Cookidoo.parseResult("search recipes", () =>
+      cookidooSearchResultFromJson(data as unknown as SearchResultJSON, this.cfg.localization),
+    );
   }
 
   // -- internal request helpers -------------------------------------------

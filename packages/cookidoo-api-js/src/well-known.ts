@@ -24,8 +24,10 @@ import {
   EDIT_OWNERSHIP_ADDITIONAL_ITEMS_PATH,
   EDIT_OWNERSHIP_INGREDIENT_ITEMS_PATH,
   LOGIN_HEADERS,
+  RECIPE_PATH,
   REMOVE_ADDITIONAL_ITEMS_PATH,
   REMOVE_INGREDIENT_ITEMS_FOR_RECIPES_PATH,
+  SEARCH_PATH,
   SHOPPING_LIST_RECIPES_PATH,
 } from "./const.js";
 import { CookidooParseException, CookidooRequestException } from "./exceptions.js";
@@ -55,6 +57,8 @@ export const ENDPOINT_RELS: Readonly<Record<string, readonly [string, string]>> 
     EDIT_OWNERSHIP_ADDITIONAL_ITEMS_PATH,
   ],
   "pantry:remove-additional-items": ["shopping", REMOVE_ADDITIONAL_ITEMS_PATH],
+  "recipe:details": ["recipes/recipe", RECIPE_PATH],
+  "search:home": ["search", SEARCH_PATH],
 };
 
 const DOMAIN_PREFIX_RE = /^https?:\/\/[^/]+/;

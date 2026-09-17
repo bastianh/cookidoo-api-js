@@ -116,3 +116,107 @@ export interface CookidooShoppingRecipe {
   image: string | null;
   url: string;
 }
+
+/** A single recipe hit from a Cookidoo search. */
+export interface CookidooSearchRecipeHit {
+  id: string;
+  name: string;
+  thumbnail: string | null;
+  image: string | null;
+  url: string;
+}
+
+/** A Cookidoo search result. */
+export interface CookidooSearchResult {
+  recipes: CookidooSearchRecipeHit[];
+  total: number;
+}
+
+/** Options for {@link Cookidoo.searchRecipes | searchRecipes}, all optional. */
+export interface CookidooSearchRecipesOptions {
+  query?: string;
+  /** Defaults to the first part of the configured language (e.g. "de-CH" -> "de"). */
+  locale?: string;
+  accessories?: string | string[];
+  languages?: string | string[];
+  categories?: string | string[];
+  countries?: string | string[];
+  ingredients?: string | string[];
+  excludeIngredients?: string | string[];
+  tags?: string | string[];
+  ratings?: string | string[];
+  difficulty?: string;
+  /** In seconds. */
+  preparationTime?: number;
+  /** In seconds. */
+  totalTime?: number;
+  portions?: number;
+  page?: number;
+  pageSize?: number;
+  tmv?: ThermomixMachineType | string | (ThermomixMachineType | string)[];
+}
+
+/** A category a recipe belongs to. */
+export interface CookidooCategory {
+  id: string;
+  name: string;
+  notes: string;
+}
+
+/** A collection a recipe is part of. */
+export interface CookidooRecipeCollection {
+  id: string;
+  name: string;
+  totalRecipes: number;
+}
+
+/** A single nutrition value (e.g. protein, fat, kcal). */
+export interface CookidooNutrition {
+  number: number;
+  type: string;
+  unittype: string;
+}
+
+/** A set of nutrition values for a given quantity/unit of the recipe. */
+export interface CookidooRecipeNutrition {
+  nutritions: CookidooNutrition[];
+  quantity: number;
+  unitNotation: string;
+}
+
+/** A named group of {@link CookidooRecipeNutrition}. */
+export interface CookidooNutritionGroup {
+  name: string;
+  recipeNutritions: CookidooRecipeNutrition[];
+}
+
+/** A single cooking instruction step. `formattedText` is HTML markup, as sent by the API. */
+export interface CookidooRecipeStep {
+  /** May be empty. */
+  title: string;
+  formattedText: string;
+}
+
+/** A named group of {@link CookidooRecipeStep}. */
+export interface CookidooRecipeStepGroup {
+  /** May be empty. */
+  title: string;
+  recipeSteps: CookidooRecipeStep[];
+}
+
+/** The full details of a recipe. */
+export interface CookidooShoppingRecipeDetails extends CookidooShoppingRecipe {
+  difficulty: string;
+  /** Hints and additional information about the recipe. */
+  notes: string[];
+  categories: CookidooCategory[];
+  collections: CookidooRecipeCollection[];
+  utensils: string[];
+  servingSize: number;
+  /** In seconds. */
+  activeTime: number;
+  /** In seconds. */
+  totalTime: number;
+  nutritionGroups: CookidooNutritionGroup[];
+  stepGroups: CookidooRecipeStepGroup[];
+}

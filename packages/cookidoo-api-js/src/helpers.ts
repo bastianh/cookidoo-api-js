@@ -8,14 +8,18 @@ import type {
   IngredientJSON,
   ItemJSON,
   QuantityJSON,
+  RecipeDetailsJSON,
   RecipeJSON,
+  SearchResultJSON,
 } from "./raw-types.js";
 import type {
   CookidooAdditionalItem,
   CookidooIngredient,
-  CookidooIngredientItem,
   CookidooLocalizationConfig,
+  CookidooIngredientItem,
+  CookidooSearchResult,
   CookidooShoppingRecipe,
+  CookidooShoppingRecipeDetails,
   CookidooUserInfo,
 } from "./types.js";
 
@@ -137,6 +141,106 @@ export function cookidooRecipeFromJson(
     image,
     url: constructRecipeUrl(localization, recipe.id),
   };
+}
+
+/** Convert a search result received from the API to a Cookidoo search result. */
+export function cookidooSearchResultFromJson(
+  data: SearchResultJSON,
+  localization?: CookidooLocalizationConfig,
+): CookidooSearchResult {
+  const rawRecipes = data.data ?? data.recipes ?? [];
+  const hits = [];
+  for (const item of rawRecipes) {
+    if (typeof item !== "object" || item === null) continue;
+    const id = item.id ?? "";
+    const name = item.title || item.name || "";
+    const [thumbnail, image] = item.descriptiveAssets
+      ? extractImagesFromDescriptiveAssets(item.descriptiveAssets)
+      : [null, null];
+    hits.push({ id, name, thumbnail, image, url: constructRecipeUrl(localization, id) });
+  }
+  const total = typeof data.total === "number" ? data.total : hits.length;
+  return { recipes: hits, total };
+}
+
+/** Convert recipe details received from the API to Cookidoo recipe details. */
+export function cookidooRecipeDetailsFromJson(
+  recipe: RecipeDetailsJSON,
+  localization?: CookidooLocalizationConfig,
+): CookidooShoppingRecipeDetails {
+  const [thumbnail, image] = recipe.descriptiveAssets
+    ? extractImagesFromDescriptiveAssets(recipe.descriptiveAssets)
+    : [null, null];
+
+  const activeTime = recipe.times.find(
+    (time) => time.type === "activeTime" && time.quantity.value,
+  )?.quantity.value;
+  if (activeTime == null) {
+    throw new Error(
+      "Recipe details response is missing a non-null 'activeTime' entry in 'times'.",
+    );
+  }
+  const totalTime = recipe.times.find(
+    (time) => time.type === "totalTime" && time.quantity.value,
+  )?.quantity.value;
+  if (totalTime == null) {
+    throw new Error(
+      "Recipe details response is missing a non-null 'totalTime' entry in 'times'.",
+    );
+  }
+
+  return {
+    id: recipe.id,
+    name: recipe.title,
+    ingredients: recipe.recipeIngredientGroups.flatMap((group) =>
+      group.recipeIngredients.map(cookidooIngredientFromJson),
+    ),
+    difficulty: recipe.difficulty,
+    notes: recipe.additionalInformation.map((info) => info.content),
+    categories: recipe.categories.map((category) => ({
+      id: category.id,
+      name: category.title,
+      notes: category.subtitle,
+    })),
+    collections: recipe.inCollections.map((collection) => ({
+      id: collection.id,
+      name: collection.title,
+      totalRecipes: collection.recipesCount.value,
+    })),
+    utensils: recipe.recipeUtensils.map((utensil) => utensil.utensilNotation),
+    servingSize: recipe.servingSize.quantity.value || 0,
+    activeTime,
+    totalTime,
+    nutritionGroups: (recipe.nutritionGroups ?? []).map((group) => ({
+      name: group.name,
+      recipeNutritions: group.recipeNutritions.map((recipeNutrition) => ({
+        nutritions: recipeNutrition.nutritions.map((nutrition) => ({
+          number: nutrition.number,
+          type: nutrition.type,
+          unittype: nutrition.unittype,
+        })),
+        quantity: recipeNutrition.quantity,
+        unitNotation: recipeNutrition.unitNotation,
+      })),
+    })),
+    stepGroups: (recipe.recipeStepGroups ?? []).map((group) => ({
+      title: group.title,
+      recipeSteps: group.recipeSteps.map((step) => ({
+        title: step.title,
+        formattedText: step.formattedText,
+      })),
+    })),
+    thumbnail,
+    image,
+    url: constructRecipeUrl(localization, recipe.id),
+  };
+}
+
+/** Normalize a list/string param to a comma-separated string. */
+export function normalizeListParam(value: string | string[] | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) return value.filter(Boolean).join(",");
+  return value;
 }
 
 interface LocalizationOptionJSON {
