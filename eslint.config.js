@@ -11,6 +11,7 @@ export default tseslint.config(
       "**/*.d.ts",
       "packages/cookidoo-api-js/src/localization.json",
       "packages/node-red-cookidoo/nodes/*.html",
+      "packages/node-red-fcm/nodes/*.html",
     ],
   },
   js.configs.recommended,
@@ -32,7 +33,7 @@ export default tseslint.config(
     // Node-RED nodes: plain CommonJS, injected `RED` runtime global.
     // `require()` is how Node-RED itself loads node modules, and aliasing
     // `this` to `node` is the standard pattern in every Node-RED node.
-    files: ["packages/node-red-cookidoo/**/*.js"],
+    files: ["packages/node-red-cookidoo/**/*.js", "packages/node-red-fcm/**/*.js"],
     languageOptions: {
       sourceType: "commonjs",
       globals: { ...globals.node, RED: "readonly" },

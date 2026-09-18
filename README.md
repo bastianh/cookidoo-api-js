@@ -10,10 +10,11 @@ The developers of this project are in no way endorsed by or affiliated with Cook
 
 - [`packages/cookidoo-api-js`](packages/cookidoo-api-js) — the core client library (TypeScript, published as `cookidoo-api-js`). Signs in via the official OAuth2/PKCE login flow and exposes the Cookidoo API.
 - [`packages/node-red-cookidoo`](packages/node-red-cookidoo) — Node-RED nodes (published as `@bastianh/node-red-cookidoo`) built on `cookidoo-api-js`, for use in Node-RED flows.
+- [`packages/node-red-fcm`](packages/node-red-fcm) — Node-RED nodes (published as `@bastianh/node-red-fcm`) that obtain a Firebase Cloud Messaging registration token for *any* Firebase project and receive its push messages. Deliberately app-agnostic: it has nothing to do with Cookidoo and doesn't depend on the packages above, it just happens to be the missing piece for receiving Cookidoo's live cook state (see its README for that pairing as an example).
 
 ## Status
 
-This is an early, incremental port. It currently covers the OAuth2/PKCE login flow, access-token refresh, token persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items, clearing the list), recipes (search, full details), custom recipes (get, list, add-from, remove), the calendar (get a week, add/remove recipes, including custom ones), collections (managed and custom: count/get/add/remove, plus add/remove-recipe on custom collections), the REST side of devices/remote-monitoring (paired appliances, monitorable device ids, push-token register/unregister, push-payload decoding), and the cooking history ("last cooked"). Actually *receiving* Firebase push messages needs a real FCM client and is out of scope -- see the [`cookidoo-api-js` README](packages/cookidoo-api-js/README.md#usage) for details. Further endpoints are ported incrementally from the [Python client](https://github.com/miaucl/cookidoo-api).
+This is an early, incremental port. It currently covers the OAuth2/PKCE login flow, access-token refresh, token persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items, clearing the list), recipes (search, full details), custom recipes (get, list, add-from, remove), the calendar (get a week, add/remove recipes, including custom ones), collections (managed and custom: count/get/add/remove, plus add/remove-recipe on custom collections), the REST side of devices/remote-monitoring (paired appliances, monitorable device ids, push-token register/unregister, push-payload decoding), and the cooking history ("last cooked"). Actually *receiving* Firebase push messages needs a real FCM client, which is out of scope for the client library itself -- see the [`cookidoo-api-js` README](packages/cookidoo-api-js/README.md#usage) for details, and [`node-red-fcm`](packages/node-red-fcm) for a general-purpose Node-RED receiver that can feed it. Further endpoints are ported incrementally from the [Python client](https://github.com/miaucl/cookidoo-api).
 
 ## Dev setup
 
@@ -28,7 +29,7 @@ This is a [pnpm workspace](https://pnpm.io/workspaces); each package also has it
 
 ## Manual testing with Node-RED
 
-A `docker-compose.yml` at the repo root spins up an official Node-RED image with the two packages mounted straight from your working tree, so you can drag the Cookidoo nodes into a flow and try them against a real account without publishing anything.
+A `docker-compose.yml` at the repo root spins up an official Node-RED image with this repo's packages mounted straight from your working tree, so you can drag the nodes into a flow and try them against a real account without publishing anything.
 
 For a one-off look:
 
