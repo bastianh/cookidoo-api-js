@@ -19,6 +19,7 @@ The developers of this package are in no way endorsed by or affiliated with Cook
 - **cookidoo-calendar** — operations on the recipe-planning calendar (get a week, add/remove recipes for a day, including the custom-recipe equivalents), same operation-dropdown pattern. A `day` is always an ISO-8601 `YYYY-MM-DD` string.
 - **cookidoo-collections** — CRUD on the signed-in user's managed (Vorwerk-curated) and custom (self-created) recipe collections (count/get/add/remove for each, plus add/remove-recipe on custom collections), same operation-dropdown pattern.
 - **cookidoo-devices** — paired appliances and the REST side of remote monitoring: get paired appliances, get the appliance ids currently reachable for monitoring, register/unregister a push token, and decode an already-received push payload into a cook-state object. It does **not** obtain a push token or receive the Firebase push messages themselves -- that needs a real FCM client, outside what this library (and Node-RED) does out of the box. The `decode-push` operation works standalone, without a **cookidoo-config** node, since it makes no API call.
+- **cookidoo-get-cooking-history** — on each input message, fetches the signed-in user's cooking history ("last cooked") and sets it as `msg.payload`, newest-cooked first. The service returns the whole history in one response; it takes no pagination parameters.
 
 ## Token persistence
 
@@ -33,7 +34,7 @@ Practically, for **cookidoo-config**:
 
 ## Status
 
-Early, incremental slice: config node, `cookidoo-get-user-info`, the shopping list (`cookidoo-shopping-recipes`, `cookidoo-shopping-additional-items`, `cookidoo-clear-shopping-list`), recipes (`cookidoo-search-recipes`, `cookidoo-get-recipe-details`), custom recipes (`cookidoo-custom-recipes`), the calendar (`cookidoo-calendar`), collections (`cookidoo-collections`), and devices/remote-monitoring (`cookidoo-devices`). More nodes are added as the underlying `cookidoo-api-js` client grows.
+Early, incremental slice: config node, `cookidoo-get-user-info`, the shopping list (`cookidoo-shopping-recipes`, `cookidoo-shopping-additional-items`, `cookidoo-clear-shopping-list`), recipes (`cookidoo-search-recipes`, `cookidoo-get-recipe-details`), custom recipes (`cookidoo-custom-recipes`), the calendar (`cookidoo-calendar`), collections (`cookidoo-collections`), devices/remote-monitoring (`cookidoo-devices`), and the cooking history (`cookidoo-get-cooking-history`). More nodes are added as the underlying `cookidoo-api-js` client grows.
 
 ## Installation
 
