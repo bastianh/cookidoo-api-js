@@ -24,6 +24,7 @@ import {
   CUSTOM_RECIPE_PATH,
   CUSTOM_RECIPES_PATH,
   DEFAULT_API_HEADERS,
+  DEVICES_PATH,
   EDIT_ADDITIONAL_ITEMS_PATH,
   EDIT_OWNERSHIP_ADDITIONAL_ITEMS_PATH,
   EDIT_OWNERSHIP_INGREDIENT_ITEMS_PATH,
@@ -79,6 +80,7 @@ export const ENDPOINT_RELS: Readonly<Record<string, readonly [string, string]>> 
   "organize:api-custom-list": ["organize", CUSTOM_COLLECTIONS_PATH],
   "organize:api-custom-list-modify": ["organize", REMOVE_CUSTOM_COLLECTION_PATH],
   "organize:api-custom-list-recipe": ["organize", REMOVE_RECIPE_FROM_CUSTOM_COLLECTION_PATH],
+  "customer-devices:thermomix-versions": ["customer-devices", DEVICES_PATH],
 };
 
 const DOMAIN_PREFIX_RE = /^https?:\/\/[^/]+/;

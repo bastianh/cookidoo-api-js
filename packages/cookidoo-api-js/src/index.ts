@@ -9,13 +9,16 @@ export {
   CookidooUnavailableException,
 } from "./exceptions.js";
 export {
+  cookidooCookingActivityFromPush,
   getCountryOptions,
   getLanguageOptions,
   getLocalizationOptions,
+  isCookingActivityActive,
 } from "./helpers.js";
 export {
   defaultConfig,
   defaultLocalization,
+  CookidooCookState,
   ThermomixMachineType,
   type CookidooAdditionalItem,
   type CookidooAuthData,
@@ -27,7 +30,9 @@ export {
   type CookidooCollection,
   type CookidooCollectionsCount,
   type CookidooConfig,
+  type CookidooCookingActivity,
   type CookidooCustomRecipe,
+  type CookidooDevice,
   type CookidooIngredient,
   type CookidooIngredientItem,
   type CookidooItem,

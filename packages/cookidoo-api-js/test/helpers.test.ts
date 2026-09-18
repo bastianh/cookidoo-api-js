@@ -4,7 +4,9 @@ import {
   cookidooAdditionalItemFromJson,
   cookidooCalendarDayFromJson,
   cookidooCollectionFromJson,
+  cookidooCookingActivityFromPush,
   cookidooCustomRecipeFromJson,
+  cookidooDeviceFromJson,
   cookidooIngredientFromJson,
   cookidooIngredientItemFromJson,
   cookidooQuantityFromJson,
@@ -15,8 +17,10 @@ import {
   getCountryOptions,
   getLanguageOptions,
   getLocalizationOptions,
+  isCookingActivityActive,
   normalizeListParam,
 } from "../src/helpers.js";
+import { CookidooCookState, ThermomixMachineType } from "../src/types.js";
 
 describe("cookidooUserInfoFromJson", () => {
   it("maps the raw community profile shape", () => {
@@ -559,6 +563,120 @@ describe("cookidooCollectionFromJson", () => {
     });
     expect(collection.description).toBeNull();
     expect(collection.chapters).toEqual([{ name: "", recipes: [] }]);
+  });
+});
+
+describe("cookidooDeviceFromJson", () => {
+  it("maps a known machine type", () => {
+    expect(cookidooDeviceFromJson("TM7")).toEqual({ type: ThermomixMachineType.TM7 });
+  });
+
+  it("throws on an unrecognized machine type", () => {
+    expect(() => cookidooDeviceFromJson("TM99")).toThrow();
+  });
+});
+
+describe("cookidooCookingActivityFromPush", () => {
+  // A real remote-monitoring push payload (Firebase data message; values are strings).
+  const RAW_PUSH: Record<string, unknown> = {
+    deviceId: "22e920b2d6184cec6c854cd005d6aa8fb851d7e783478b50f361ac8d1ab97bfe",
+    id: "986954277",
+    cookingActivityId: "210c27aa-de31-4565-aad1-4f10e2c79deb",
+    state: "running",
+    recipeId: "r54743",
+    recipeType: "vorwerk",
+    leadingText: "Purè di patate",
+    trailingText: "5/9",
+    primaryInfo: "---",
+    secondaryInfo: "95",
+    separator: "/",
+    isTimeEstimated: "false",
+    iconId: "manual-values",
+    completedDate: "2026-08-28T13:37:48Z",
+    staleDate: "1787924895000",
+    dismissalDate: "1787924388000",
+  };
+
+  it("decodes a real push payload", () => {
+    const activity = cookidooCookingActivityFromPush(RAW_PUSH);
+    expect(activity.state).toBe(CookidooCookState.RUNNING);
+    expect(isCookingActivityActive(activity)).toBe(true);
+    expect(activity.recipeName).toBe("Purè di patate");
+    expect(activity.step).toBe("5/9");
+    expect(activity.targetTemperature).toBe(95);
+    expect(activity.currentTemperature).toBeNull(); // "---" -> null
+    expect(activity.isTimeEstimated).toBe(false); // "false" -> false
+    expect(activity.recipeType).toBe("VORWERK");
+    expect(activity.completedAt).not.toBeNull();
+    expect(activity.staleAt).not.toBeNull();
+    expect(activity.staleAt?.getUTCFullYear()).toBe(2026);
+  });
+
+  it("a done cook is not active", () => {
+    const activity = cookidooCookingActivityFromPush({ ...RAW_PUSH, state: "done" });
+    expect(activity.state).toBe(CookidooCookState.DONE);
+    expect(isCookingActivityActive(activity)).toBe(false);
+  });
+
+  it.each([
+    // _push_timestamp: unparseable and empty values degrade to null
+    ["completedDate", "not-a-date", "completedAt", null],
+    ["completedDate", "", "completedAt", null],
+    ["completedDate", null, "completedAt", null],
+    ["completedDate", ["unexpected", "shape"], "completedAt", null],
+    // _push_number: sentinels, comma decimals and native numbers
+    ["secondaryInfo", "---", "targetTemperature", null],
+    ["secondaryInfo", "", "targetTemperature", null],
+    ["secondaryInfo", "not-a-number", "targetTemperature", null],
+    ["secondaryInfo", "37,5", "targetTemperature", 37.5],
+    ["secondaryInfo", 95, "targetTemperature", 95],
+    ["secondaryInfo", null, "targetTemperature", null],
+    // _push_bool: real bools pass through, strings are coerced
+    ["isTimeEstimated", true, "isTimeEstimated", true],
+    ["isTimeEstimated", "yes", "isTimeEstimated", true],
+    ["isTimeEstimated", "FALSE", "isTimeEstimated", false],
+    ["isTimeEstimated", 1, "isTimeEstimated", true],
+  ] as const)(
+    "malformed/alternately-typed %s=%j degrades %s to %j instead of throwing",
+    (field, value, attr, expected) => {
+      const activity = cookidooCookingActivityFromPush({ ...RAW_PUSH, [field]: value });
+      expect(activity[attr as keyof typeof activity]).toEqual(expected);
+    },
+  );
+
+  it.each([["600"], [600]])(
+    "accepts remainingDuration as a string or a number (%j)",
+    (remaining) => {
+      const activity = cookidooCookingActivityFromPush({
+        ...RAW_PUSH,
+        remainingDuration: remaining,
+      });
+      expect(activity.remainingSeconds).toBe(600);
+    },
+  );
+
+  it("falls back to deriving remainingSeconds from the finish time when unparseable", () => {
+    const activity = cookidooCookingActivityFromPush({
+      ...RAW_PUSH,
+      remainingDuration: "not-a-number",
+    });
+    expect(activity.remainingSeconds === null || Number.isInteger(activity.remainingSeconds)).toBe(
+      true,
+    );
+  });
+
+  it("decodes epoch millis and epoch seconds to the same instant", () => {
+    const millis = cookidooCookingActivityFromPush({
+      ...RAW_PUSH,
+      completedDate: "1787924895000",
+    });
+    const seconds = cookidooCookingActivityFromPush({ ...RAW_PUSH, completedDate: 1787924895 });
+    expect(millis.completedAt).not.toBeNull();
+    expect(millis.completedAt?.getTime()).toBe(seconds.completedAt?.getTime());
+  });
+
+  it("throws on an unrecognized state", () => {
+    expect(() => cookidooCookingActivityFromPush({ ...RAW_PUSH, state: "not-a-state" })).toThrow();
   });
 });
 

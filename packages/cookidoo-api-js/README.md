@@ -118,9 +118,28 @@ await cookidoo.addManagedCollection(managed[0].id);
 await cookidoo.removeManagedCollection(managed[0].id);
 ```
 
+Devices and remote monitoring:
+
+```ts
+const devices = await cookidoo.getDevices(); // paired appliances, e.g. [{ type: "TM6" }]
+
+// Appliances currently online/reachable for live monitoring
+const monitored = await cookidoo.getMonitoredDeviceIds();
+
+// Live cook state is pushed out of band as a Firebase Cloud Messaging data
+// message -- obtaining an FCM token and receiving that message is your own
+// client's job, this library only registers/unregisters the token and
+// decodes an already-received payload:
+await cookidoo.registerPushToken(fcmToken, "my-app-install-id");
+// ... your FCM client receives a data message ...
+const activity = cookidooCookingActivityFromPush(receivedData);
+console.log(activity.state, activity.recipeName, isCookingActivityActive(activity));
+await cookidoo.unregisterPushToken(fcmToken);
+```
+
 ## Status
 
-Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items — get/add/remove/edit-ownership, including custom recipes, plus clearing the whole list), recipes (`searchRecipes`, `getRecipeDetails`), custom recipes (`getCustomRecipe`, `listCustomRecipes`, `addCustomRecipeFrom`, `removeCustomRecipe`), the calendar (`getRecipesInCalendarWeek`, `add/removeRecipesToCalendar`, plus the custom-recipe equivalents), and collections (`count/get/add/removeManagedCollection(s)`, `count/get/add/removeCustomCollection(s)`, `add/removeRecipeFromCustomCollection`). More of the Python client's surface (device/remote-monitoring) is ported incrementally.
+Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items — get/add/remove/edit-ownership, including custom recipes, plus clearing the whole list), recipes (`searchRecipes`, `getRecipeDetails`), custom recipes (`getCustomRecipe`, `listCustomRecipes`, `addCustomRecipeFrom`, `removeCustomRecipe`), the calendar (`getRecipesInCalendarWeek`, `add/removeRecipesToCalendar`, plus the custom-recipe equivalents), collections (`count/get/add/removeManagedCollection(s)`, `count/get/add/removeCustomCollection(s)`, `add/removeRecipeFromCustomCollection`), and the REST side of devices/remote-monitoring (`getDevices`, `getMonitoredDeviceIds`, `register/unregisterPushToken`, `cookidooCookingActivityFromPush`). Actually *receiving* the Firebase push messages themselves is out of scope -- see "Devices and remote monitoring" above.
 
 ## Exceptions
 
