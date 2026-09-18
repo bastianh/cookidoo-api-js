@@ -152,3 +152,44 @@ export interface SearchResultJSON {
   recipes?: SearchRecipeHitJSON[];
   total?: number;
 }
+
+export interface CustomRecipeYieldJSON {
+  value: number;
+  unitText: string;
+}
+
+export interface CustomRecipeTextJSON {
+  text: string;
+}
+
+/**
+ * The two accept headers Cookidoo's custom-recipe endpoints return shape
+ * this differently: `totalTime`/`prepTime` as either an ISO-8601 duration
+ * string or a plain number of seconds; `tool`/`recipeYield`/`recipeIngredient`/
+ * `recipeInstructions` vs. `tools`/`yield`/`ingredients`/`instructions`.
+ * Every field is therefore optional except `name`.
+ */
+export interface CustomRecipeContentJSON {
+  name: string;
+  totalTime?: string | number;
+  prepTime?: string | number;
+  tool?: string[];
+  tools?: string[];
+  recipeYield?: CustomRecipeYieldJSON;
+  yield?: CustomRecipeYieldJSON;
+  recipeIngredient?: (string | CustomRecipeTextJSON)[];
+  ingredients?: (string | CustomRecipeTextJSON)[];
+  recipeInstructions?: (string | CustomRecipeTextJSON)[];
+  instructions?: (string | CustomRecipeTextJSON)[];
+  image?: string | null;
+}
+
+export interface CustomRecipeJSON {
+  recipeId: string;
+  title?: string;
+  recipeContent: CustomRecipeContentJSON;
+}
+
+export interface CustomRecipesJSON {
+  items: CustomRecipeJSON[];
+}

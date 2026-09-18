@@ -21,6 +21,7 @@ export {
   type CookidooAuthData,
   type CookidooCategory,
   type CookidooConfig,
+  type CookidooCustomRecipe,
   type CookidooIngredient,
   type CookidooIngredientItem,
   type CookidooItem,

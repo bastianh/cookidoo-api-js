@@ -4,6 +4,8 @@ import localizationOptions from "./localization.json" with { type: "json" };
 import type {
   AdditionalItemJSON,
   CommunityProfileJSON,
+  CustomRecipeJSON,
+  CustomRecipeTextJSON,
   DescriptiveAssetJSON,
   IngredientJSON,
   ItemJSON,
@@ -14,6 +16,7 @@ import type {
 } from "./raw-types.js";
 import type {
   CookidooAdditionalItem,
+  CookidooCustomRecipe,
   CookidooIngredient,
   CookidooLocalizationConfig,
   CookidooIngredientItem,
@@ -241,6 +244,60 @@ export function normalizeListParam(value: string | string[] | undefined): string
   if (value === undefined) return undefined;
   if (Array.isArray(value)) return value.filter(Boolean).join(",");
   return value;
+}
+
+// A simplified ISO-8601 duration parser (no external dependency): Cookidoo's
+// custom-recipe prep/total times are plain "PT#H#M#S"-style durations, never
+// years/months/weeks in practice, but those are still parsed (via a fixed
+// 365-day year / 30-day month, same approximation isodate -- the Python
+// client's parser -- uses) for robustness rather than silently returning 0.
+const ISO8601_DURATION_RE =
+  /^P(?:(?<years>\d+(?:\.\d+)?)Y)?(?:(?<months>\d+(?:\.\d+)?)M)?(?:(?<weeks>\d+(?:\.\d+)?)W)?(?:(?<days>\d+(?:\.\d+)?)D)?(?:T(?:(?<hours>\d+(?:\.\d+)?)H)?(?:(?<minutes>\d+(?:\.\d+)?)M)?(?:(?<seconds>\d+(?:\.\d+)?)S)?)?$/;
+
+function parseIso8601DurationSeconds(value: string): number {
+  const match = ISO8601_DURATION_RE.exec(value);
+  if (!match?.groups) return 0;
+  const num = (key: string): number => Number(match.groups![key] ?? 0);
+  const days = num("years") * 365 + num("months") * 30 + num("weeks") * 7 + num("days");
+  return Math.floor(days * 86400 + num("hours") * 3600 + num("minutes") * 60 + num("seconds"));
+}
+
+/** A custom recipe's `totalTime`/`prepTime` is either an ISO-8601 duration or plain seconds. */
+function durationToSeconds(value: string | number | undefined): number {
+  if (value === undefined) return 0;
+  return typeof value === "number" ? Math.trunc(value) : parseIso8601DurationSeconds(value);
+}
+
+function extractTextList(value: (string | CustomRecipeTextJSON)[]): string[] {
+  return value.map((item) => (typeof item === "string" ? item : item.text));
+}
+
+/** Convert a custom recipe received from the API to a Cookidoo custom recipe. */
+export function cookidooCustomRecipeFromJson(
+  recipe: CustomRecipeJSON,
+  localization?: CookidooLocalizationConfig,
+): CookidooCustomRecipe {
+  const content = recipe.recipeContent;
+
+  let thumbnail: string | null = null;
+  let image: string | null = content.image ?? null;
+  if (image) [thumbnail, image] = processImageUrl(image);
+
+  const recipeYield = content.recipeYield ?? content.yield ?? { value: 0, unitText: "" };
+
+  return {
+    id: recipe.recipeId,
+    name: content.name,
+    ingredients: extractTextList(content.recipeIngredient ?? content.ingredients ?? []),
+    instructions: extractTextList(content.recipeInstructions ?? content.instructions ?? []),
+    servingSize: recipeYield.value,
+    totalTime: durationToSeconds(content.totalTime),
+    activeTime: durationToSeconds(content.prepTime),
+    tools: content.tool ?? content.tools ?? [],
+    thumbnail,
+    image,
+    url: constructRecipeUrl(localization, recipe.recipeId, "created-recipes"),
+  };
 }
 
 interface LocalizationOptionJSON {

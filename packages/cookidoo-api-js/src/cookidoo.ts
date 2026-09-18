@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import {
   CIAM_BASE_URL,
   CIAM_LOGIN_SRV_URL,
+  CUSTOM_RECIPES_PATH_ACCEPT,
   DEFAULT_API_HEADERS,
   LOGIN_HEADERS,
   OAUTH_SCOPE,
@@ -20,6 +21,7 @@ import {
 } from "./exceptions.js";
 import {
   cookidooAdditionalItemFromJson,
+  cookidooCustomRecipeFromJson,
   cookidooIngredientItemFromJson,
   cookidooRecipeDetailsFromJson,
   cookidooRecipeFromJson,
@@ -31,6 +33,8 @@ import { CookieJar, jarRequest, type FetchLike } from "./http.js";
 import type {
   AdditionalItemJSON,
   CommunityProfileJSON,
+  CustomRecipeJSON,
+  CustomRecipesJSON,
   ItemJSON,
   RecipeDetailsJSON,
   RecipeJSON,
@@ -41,6 +45,7 @@ import {
   type CookidooAdditionalItem,
   type CookidooAuthData,
   type CookidooConfig,
+  type CookidooCustomRecipe,
   type CookidooIngredientItem,
   type CookidooLocalizationConfig,
   type CookidooSearchRecipesOptions,
@@ -478,6 +483,66 @@ export class Cookidoo {
     return Cookidoo.parseResult("search recipes", () =>
       cookidooSearchResultFromJson(data as unknown as SearchResultJSON, this.cfg.localization),
     );
+  }
+
+  /** Get a custom recipe created (or copied from an official recipe) by the signed-in user. */
+  async getCustomRecipe(id: string): Promise<CookidooCustomRecipe> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("customer-recipes:recipe-details", { id });
+    const result = await this.requestJson("GET", url, "loading custom recipe");
+    const data = Cookidoo.ensureMapping(result, "loading custom recipe");
+    return Cookidoo.parseResult("loading custom recipe", () =>
+      cookidooCustomRecipeFromJson(data as unknown as CustomRecipeJSON, this.cfg.localization),
+    );
+  }
+
+  /** List the signed-in user's custom recipes. */
+  async listCustomRecipes(): Promise<CookidooCustomRecipe[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("customer-recipes:recipe-create");
+    const result = await this.requestJson("GET", url, "listing custom recipes", {
+      headers: { ACCEPT: CUSTOM_RECIPES_PATH_ACCEPT },
+    });
+    const data = Cookidoo.ensureMapping(result, "listing custom recipes");
+    if (!Array.isArray(data.items)) {
+      throw new CookidooParseException(
+        "Listing custom recipes failed during parsing of request response.",
+      );
+    }
+    return Cookidoo.parseResult("listing custom recipes", () =>
+      (data as unknown as CustomRecipesJSON).items.map((recipe) =>
+        cookidooCustomRecipeFromJson(recipe, this.cfg.localization),
+      ),
+    );
+  }
+
+  /**
+   * Add a custom recipe copied from an official one.
+   *
+   * @param recipeId The official recipe to copy.
+   * @param servingSize The serving size of the new custom recipe.
+   */
+  async addCustomRecipeFrom(
+    recipeId: string,
+    servingSize: number,
+  ): Promise<CookidooCustomRecipe> {
+    await this.ensureEndpoints();
+    const recipeUrl = this.endpointUrl("recipe:details", { id: recipeId });
+    const url = this.endpointUrl("customer-recipes:recipe-create");
+    const result = await this.requestJson("POST", url, "add custom recipe", {
+      json: { recipeUrl: recipeUrl.toString(), servingSize },
+    });
+    const data = Cookidoo.ensureMapping(result, "add custom recipe");
+    return Cookidoo.parseResult("add custom recipe", () =>
+      cookidooCustomRecipeFromJson(data as unknown as CustomRecipeJSON, this.cfg.localization),
+    );
+  }
+
+  /** Remove a custom recipe. */
+  async removeCustomRecipe(customRecipeId: string): Promise<void> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("customer-recipes:recipe-details", { id: customRecipeId });
+    await this.requestJson("DELETE", url, "remove custom recipe", { parseResponse: false });
   }
 
   // -- internal request helpers -------------------------------------------

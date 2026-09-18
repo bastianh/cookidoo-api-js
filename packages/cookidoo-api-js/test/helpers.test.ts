@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   cookidooAdditionalItemFromJson,
+  cookidooCustomRecipeFromJson,
   cookidooIngredientFromJson,
   cookidooIngredientItemFromJson,
   cookidooQuantityFromJson,
@@ -347,6 +348,102 @@ describe("cookidooRecipeDetailsFromJson", () => {
     const details = cookidooRecipeDetailsFromJson(rest as never);
     expect(details.nutritionGroups).toEqual([]);
     expect(details.stepGroups).toEqual([]);
+  });
+});
+
+describe("cookidooCustomRecipeFromJson", () => {
+  const localization = {
+    countryCode: "ch",
+    language: "de-CH",
+    url: "https://cookidoo.ch/foundation/de-CH",
+  };
+
+  it("maps the 'created' response shape (recipeIngredient/tool/recipeYield, ISO-8601 durations)", () => {
+    const recipe = cookidooCustomRecipeFromJson(
+      {
+        recipeId: "01K2CVHD1DXG1PVETNVV3JPKWW",
+        recipeContent: {
+          name: "Vongole alla marinara",
+          image:
+            "https://assets.tmecosys.com/image/upload/{transformation}/img/recipe/x.jpg",
+          totalTime: "PT30M",
+          prepTime: "PT10M",
+          tool: ["TM7", "TM6", "TM5"],
+          recipeYield: { value: 6, unitText: "portion" },
+          recipeIngredient: ["130 g di cipolla", "65 g di olio extravergine di oliva"],
+          recipeInstructions: ["Mettere nel boccale le cipolle.", "Servire subito."],
+        },
+      },
+      localization,
+    );
+    expect(recipe.id).toBe("01K2CVHD1DXG1PVETNVV3JPKWW");
+    expect(recipe.name).toBe("Vongole alla marinara");
+    expect(recipe.totalTime).toBe(1800);
+    expect(recipe.activeTime).toBe(600);
+    expect(recipe.tools).toEqual(["TM7", "TM6", "TM5"]);
+    expect(recipe.servingSize).toBe(6);
+    expect(recipe.ingredients).toEqual([
+      "130 g di cipolla",
+      "65 g di olio extravergine di oliva",
+    ]);
+    expect(recipe.instructions).toEqual([
+      "Mettere nel boccale le cipolle.",
+      "Servire subito.",
+    ]);
+    expect(recipe.thumbnail).toBe(
+      "https://assets.tmecosys.com/image/upload/t_web_shared_recipe_221x240/img/recipe/x.jpg",
+    );
+    expect(recipe.image).toBe(
+      "https://assets.tmecosys.com/image/upload/t_web_rdp_recipe_584x480_1_5x/img/recipe/x.jpg",
+    );
+    expect(recipe.url).toBe(
+      "https://cookidoo.ch/created-recipes/de-CH/01K2CVHD1DXG1PVETNVV3JPKWW",
+    );
+  });
+
+  it("maps the 'list' response shape (ingredients/tools/yield as objects, numeric seconds)", () => {
+    const recipe = cookidooCustomRecipeFromJson({
+      recipeId: "01K2CTJ9Y1BABRG5MXK44CFZS4",
+      recipeContent: {
+        name: "Vongole alla marinara",
+        prepTime: 600,
+        totalTime: 1800,
+        tools: ["TM7", "TM6", "TM5"],
+        yield: { value: 6, unitText: "portion" },
+        ingredients: [
+          { text: "130 g di cipolla" },
+          { text: "65 g di olio extravergine di oliva" },
+        ],
+        instructions: [
+          { text: "Mettere nel boccale le cipolle." },
+          { text: "Servire subito." },
+        ],
+      },
+    });
+    expect(recipe.totalTime).toBe(1800);
+    expect(recipe.activeTime).toBe(600);
+    expect(recipe.tools).toEqual(["TM7", "TM6", "TM5"]);
+    expect(recipe.ingredients).toEqual([
+      "130 g di cipolla",
+      "65 g di olio extravergine di oliva",
+    ]);
+    expect(recipe.instructions).toEqual([
+      "Mettere nel boccale le cipolle.",
+      "Servire subito.",
+    ]);
+  });
+
+  it("defaults servingSize/tools/thumbnail/image when absent", () => {
+    const recipe = cookidooCustomRecipeFromJson({
+      recipeId: "r1",
+      recipeContent: { name: "Bare minimum" },
+    });
+    expect(recipe.servingSize).toBe(0);
+    expect(recipe.tools).toEqual([]);
+    expect(recipe.thumbnail).toBeNull();
+    expect(recipe.image).toBeNull();
+    expect(recipe.totalTime).toBe(0);
+    expect(recipe.activeTime).toBe(0);
   });
 });
 

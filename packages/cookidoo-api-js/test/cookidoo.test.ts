@@ -57,6 +57,19 @@ const RAW_RECIPE_DETAILS = {
   descriptiveAssets: null,
 };
 
+const RAW_CUSTOM_RECIPE = {
+  recipeId: "cr1",
+  recipeContent: {
+    name: "Vongole alla marinara",
+    totalTime: "PT30M",
+    prepTime: "PT10M",
+    tool: ["TM6"],
+    recipeYield: { value: 6, unitText: "portion" },
+    recipeIngredient: ["130 g di cipolla"],
+    recipeInstructions: ["Mettere nel boccale le cipolle."],
+  },
+};
+
 /** A hand-rolled fetch stub that plays the CIAM + Cookidoo backends for tests. */
 function createMockFetch(overrides: { password?: string; errorRedirect?: boolean } = {}) {
   let capturedState: string | null = null;
@@ -205,6 +218,23 @@ function createMockFetch(overrides: { password?: string; errorRedirect?: boolean
           recipes: [{ id: "r1", title: "Mini-Pavlova", descriptiveAssets: null }],
           total: 1,
         });
+      }
+
+      if (url.pathname === "/created-recipes/.well-known/home") {
+        return jsonResponse({
+          _links: {
+            "customer-recipes:recipe-create": { href: "/created-recipes/{lang}" },
+            "customer-recipes:recipe-details": { href: "/created-recipes/{lang}/{id}" },
+          },
+        });
+      }
+      if (url.pathname === "/created-recipes/de-TEST") {
+        if (method === "GET") return jsonResponse({ items: [RAW_CUSTOM_RECIPE] });
+        if (method === "POST") return jsonResponse(RAW_CUSTOM_RECIPE);
+      }
+      if (url.pathname === "/created-recipes/de-TEST/cr1") {
+        if (method === "GET") return jsonResponse(RAW_CUSTOM_RECIPE);
+        if (method === "DELETE") return new Response(null, { status: 204 });
       }
     }
 
@@ -476,5 +506,74 @@ describe("Cookidoo recipes", () => {
     expect(params.get("tmv")).toBe("TM6,TM7");
     expect(params.get("preparationTime")).toBe("600");
     expect(params.get("page")).toBe("2");
+  });
+});
+
+describe("Cookidoo custom recipes", () => {
+  async function loggedInClient() {
+    const { fetchMock } = createMockFetch();
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: fetchMock },
+    );
+    await client.login();
+    return client;
+  }
+
+  it("gets and lists custom recipes end-to-end", async () => {
+    const client = await loggedInClient();
+
+    const recipe = await client.getCustomRecipe("cr1");
+    expect(recipe).toEqual({
+      id: "cr1",
+      name: "Vongole alla marinara",
+      ingredients: ["130 g di cipolla"],
+      instructions: ["Mettere nel boccale le cipolle."],
+      tools: ["TM6"],
+      servingSize: 6,
+      activeTime: 600,
+      totalTime: 1800,
+      thumbnail: null,
+      image: null,
+      url: "https://cookidoo.test/created-recipes/de-TEST/cr1",
+    });
+
+    const recipes = await client.listCustomRecipes();
+    expect(recipes).toEqual([recipe]);
+  });
+
+  it("adds a custom recipe copied from an official one", async () => {
+    const client = await loggedInClient();
+    const recipe = await client.addCustomRecipeFrom("r907015", 4);
+    expect(recipe.id).toBe("cr1");
+    expect(recipe.name).toBe("Vongole alla marinara");
+  });
+
+  it("sends recipeUrl pointing at the official recipe's own resolved URL", async () => {
+    const { fetchMock } = createMockFetch();
+    let capturedBody: unknown;
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/created-recipes/de-TEST" && init?.body) {
+        capturedBody = JSON.parse(init.body as string);
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    await client.addCustomRecipeFrom("r907015", 4);
+    expect(capturedBody).toEqual({
+      recipeUrl: "https://cookidoo.test/recipes/recipe/de-TEST/r907015",
+      servingSize: 4,
+    });
+  });
+
+  it("removes a custom recipe", async () => {
+    const client = await loggedInClient();
+    await expect(client.removeCustomRecipe("cr1")).resolves.toBeUndefined();
   });
 });
