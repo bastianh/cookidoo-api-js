@@ -1,0 +1,27 @@
+{
+  "name": "@bastianh/node-red-fcm",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Node-RED nodes that obtain a Firebase Cloud Messaging registration token for any Firebase project and receive its push messages.",
+  "license": "MIT",
+  "keywords": ["fcm", "firebase", "push"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "node-red": {
+    "version": ">=3.0.0",
+    "nodes": {
+      "fcm-config": "nodes/fcm-config.js",
+      "fcm-receive": "nodes/fcm-receive.js"
+    }
+  },
+  "dependencies": {
+    "@eneris/push-receiver": "^4.3.1"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18.17"
+  }
+}

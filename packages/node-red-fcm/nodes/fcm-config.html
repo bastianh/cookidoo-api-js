@@ -1,0 +1,70 @@
+<script type="text/javascript">
+  RED.nodes.registerType("fcm-config", {
+    category: "config",
+    defaults: {
+      name: { value: "" },
+      bundleId: { value: "", required: true },
+      projectId: { value: "", required: true },
+      appId: { value: "", required: true },
+      apiKey: { value: "", required: true },
+      messagingSenderId: { value: "", required: true },
+    },
+    credentials: {
+      // The FCM registration obtained with the settings above. Written only
+      // by the node itself (initial registration and every rotation), never
+      // edited here.
+      fcmCredentials: { type: "password" },
+    },
+    label: function () {
+      return this.name || this.projectId || "fcm";
+    },
+    oneditprepare: function () {
+      const statusEl = $("#node-config-fcm-status");
+      // A `password`-type credential's value is never sent to the browser --
+      // only a `has_<field>` boolean.
+      const registered = this.credentials.has_fcmCredentials;
+      statusEl
+        .text(registered ? "✓ registered" : "not registered yet")
+        .css("color", registered ? "green" : "#888");
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="fcm-config">
+  <div class="form-row">
+    <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-config-input-name" placeholder="Name" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-bundleId"><i class="fa fa-cube"></i> Bundle ID</label>
+    <input type="text" id="node-config-input-bundleId" placeholder="com.example.app" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-projectId"><i class="fa fa-folder"></i> Project ID</label>
+    <input type="text" id="node-config-input-projectId" placeholder="your-project-id" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-appId"><i class="fa fa-mobile"></i> App ID</label>
+    <input type="text" id="node-config-input-appId" placeholder="your-app-id" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-apiKey"><i class="fa fa-key"></i> API key</label>
+    <input type="text" id="node-config-input-apiKey" placeholder="your-api-key" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-messagingSenderId"><i class="fa fa-paper-plane"></i> Sender ID</label>
+    <input type="text" id="node-config-input-messagingSenderId" placeholder="your-messaging-sender-id" />
+  </div>
+  <div class="form-row">
+    <label>&nbsp;</label>
+    <span id="node-config-fcm-status"></span>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="fcm-config">
+  <p>The Firebase app whose push messages you want to receive, plus the FCM registration obtained with it. Shared by every <code>fcm-receive</code> node that points at this config node.</p>
+  <p>All five settings belong to <i>the app you are targeting</i> — this node ships no defaults for them. They are the values a Firebase app is configured with (<code>projectId</code>, <code>appId</code>, <code>apiKey</code>, <code>messagingSenderId</code>) plus that app's package/bundle id. For an Android app they can be read out of its APK (e.g. unpack it with <code>apktool</code> and look in <code>res/values/strings.xml</code>, or at a bundled <code>google-services.json</code>).</p>
+  <p><b>These identifiers are stored in your flow file, not in the credentials file.</b> Keep that in mind before sharing an exported flow.</p>
+  <p>The registration itself (including the FCM token) <i>is</i> stored as this node's credentials, so a restart resumes an existing registration instead of creating a new one. The library rotates it periodically, and — like all Node-RED credentials — the rotated value is only written to disk as part of a <b>Deploy</b>. Until then it is live but not durable, which is what the yellow "token changed - deploy to save" status means.</p>
+  <p>The connection is opened when the first <code>fcm-receive</code> node subscribes and closed again when the last one goes away.</p>
+</script>
