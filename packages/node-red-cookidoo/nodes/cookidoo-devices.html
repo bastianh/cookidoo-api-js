@@ -1,0 +1,54 @@
+<script type="text/javascript">
+  RED.nodes.registerType("cookidoo-devices", {
+    category: "cookidoo",
+    color: "#f2c12e",
+    defaults: {
+      name: { value: "" },
+      cookidoo: { value: "", type: "cookidoo-config", required: false },
+      operation: { value: "get-devices", required: true },
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-microchip",
+    label: function () {
+      return this.name || `devices: ${this.operation}`;
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="cookidoo-devices">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-cookidoo"><i class="fa fa-cog"></i> Cookidoo</label>
+    <input type="text" id="node-input-cookidoo" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-operation"><i class="fa fa-wrench"></i> Operation</label>
+    <select id="node-input-operation" style="width:70%">
+      <option value="get-devices">get paired appliances</option>
+      <option value="get-monitored-device-ids">get monitorable device ids</option>
+      <option value="register-push-token">register push token</option>
+      <option value="unregister-push-token">unregister push token</option>
+      <option value="decode-push">decode a received push payload</option>
+    </select>
+  </div>
+  <div class="form-tips">
+    Overridable per message with <code>msg.operation</code>. <b>decode-push</b> needs no Cookidoo config. See the node's help for the expected <code>msg.payload</code> per operation, and for what this node does <em>not</em> do.
+  </div>
+</script>
+
+<script type="text/html" data-help-name="cookidoo-devices">
+  <p>Paired-appliance and remote-monitoring (push-token) operations. The operation can be set here or overridden per message with <code>msg.operation</code>.</p>
+  <table class="cookidoo-op-table" style="width:100%">
+    <tr><th align="left">Operation</th><th align="left"><code>msg.payload</code> in</th><th align="left"><code>msg.payload</code> out</th></tr>
+    <tr><td><code>get-devices</code></td><td>-</td><td><code>CookidooDevice[]</code> (paired appliances)</td></tr>
+    <tr><td><code>get-monitored-device-ids</code></td><td>-</td><td><code>string[]</code> (appliances currently online/reachable for monitoring)</td></tr>
+    <tr><td><code>register-push-token</code></td><td><code>{ pushToken, mobileAppId }</code></td><td>-</td></tr>
+    <tr><td><code>unregister-push-token</code></td><td>push token (<code>string</code>)</td><td>-</td></tr>
+    <tr><td><code>decode-push</code></td><td>a received push data payload (<code>object</code>)</td><td><code>CookidooCookingActivity</code></td></tr>
+  </table>
+  <p><b>What this node does not do:</b> it cannot obtain a push token or receive push messages itself. Cookidoo delivers live cook state as a Firebase Cloud Messaging data message to whatever token you registered -- getting that token and receiving those messages requires a real FCM client, which is outside what this library does. Feed a message payload you already received (from your own FCM setup) into <code>decode-push</code> to turn it into a <code>CookidooCookingActivity</code>.</p>
+</script>
