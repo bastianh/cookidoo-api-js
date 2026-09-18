@@ -122,6 +122,29 @@ test("cookidoo-devices decodes a push payload without needing a config node", as
   assert.equal(msg.payload.recipeId, "r1");
 });
 
+test("cookidoo-devices decodes a push payload nested under data.cookingActivity", async () => {
+  const RED = createFakeRed(null);
+  require("../nodes/cookidoo-devices.js")(RED);
+  const node = instantiate(RED, "cookidoo-devices", { cookidoo: "", operation: "decode-push" });
+
+  const msg = await runInput(node, {
+    payload: {
+      data: { cookingActivity: { deviceId: "dev-1", state: "running", recipeId: "r1" } },
+    },
+  });
+  assert.equal(msg.payload.deviceId, "dev-1");
+  assert.equal(msg.payload.state, "RUNNING");
+});
+
+test("cookidoo-devices drops a push message that carries no cook state", async () => {
+  const RED = createFakeRed(null);
+  require("../nodes/cookidoo-devices.js")(RED);
+  const node = instantiate(RED, "cookidoo-devices", { cookidoo: "", operation: "decode-push" });
+
+  const msg = await runInput(node, { payload: { data: { unrelated: "message" } } });
+  assert.equal(msg, null);
+});
+
 test("cookidoo-devices lets msg.operation override the configured operation", async () => {
   const { client, calls } = createFakeClient({
     getDevices: [],

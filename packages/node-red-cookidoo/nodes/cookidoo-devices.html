@@ -48,7 +48,7 @@
     <tr><td><code>get-monitored-device-ids</code></td><td>-</td><td><code>string[]</code> (appliances currently online/reachable for monitoring)</td></tr>
     <tr><td><code>register-push-token</code></td><td><code>{ pushToken, mobileAppId }</code></td><td>-</td></tr>
     <tr><td><code>unregister-push-token</code></td><td>push token (<code>string</code>)</td><td>-</td></tr>
-    <tr><td><code>decode-push</code></td><td>a received push data payload (<code>object</code>)</td><td><code>CookidooCookingActivity</code></td></tr>
+    <tr><td><code>decode-push</code></td><td>a received FCM message (<code>object</code>) -- flat, or with the cook state nested under <code>data</code>/<code>cookingActivity</code>/<code>remoteMonitoringInfo</code> (object or JSON string), any shape the app itself accepts</td><td><code>CookidooCookingActivity</code>, or the message is dropped (no output) if it carries no recognizable cook state</td></tr>
   </table>
-  <p><b>What this node does not do:</b> it cannot obtain a push token or receive push messages itself. Cookidoo delivers live cook state as a Firebase Cloud Messaging data message to whatever token you registered -- getting that token and receiving those messages requires a real FCM client, which is outside what this library does. Feed a message payload you already received (from your own FCM setup) into <code>decode-push</code> to turn it into a <code>CookidooCookingActivity</code>.</p>
+  <p><b>What this node does not do:</b> it cannot obtain a push token or receive push messages itself. Cookidoo delivers live cook state as a Firebase Cloud Messaging data message to whatever token you registered -- getting that token and receiving those messages requires a real FCM client, which is outside what this library does. Feed the message payload you already received (from your own FCM setup) into <code>decode-push</code> to turn it into a <code>CookidooCookingActivity</code>.</p>
 </script>

@@ -32,6 +32,63 @@ Practically, for **cookidoo-config**:
 - A background token refresh rotates the refresh token and updates the running client the same way (immediately, but not durably) — so a restart between a refresh and your next Deploy can also lose sync with what's on disk. The node's status reflects this: a solid **green** dot means the current tokens are the ones loaded from disk (durable); a **yellow** dot after a login or a refresh means they aren't saved yet.
 - If you're actively developing against the [`docker-compose.yml`](../../docker-compose.yml) setup with `pnpm dev:node-red` (which restarts the container on every code change), this is very easy to hit: log in, then Deploy once before your next edit, or you'll be logging in again after each auto-restart.
 
+## Live cook state (remote monitoring)
+
+There's no endpoint that returns an appliance's current cook state -- Cookidoo pushes it to the mobile app as a Firebase Cloud Messaging (FCM) *data message*, with no REST alternative. `cookidoo-devices` covers the REST half of that (get paired appliances, get monitorable device ids, register/unregister a push token, and a `decode-push` operation that turns an already-received FCM message into a `CookidooCookingActivity`) -- but it deliberately does **not** obtain a push token or receive those messages itself.
+
+That's not an oversight. Doing so means registering as a Google/Firebase client under *Cookidoo's own* Firebase project, which needs that project's identifiers (a project id, app id, API key and sender id). Those aren't part of any documented or discoverable API -- they only exist inside the Android app's compiled resources. This package won't ship or hardcode them: extracting and publishing a third party's app identifiers isn't something we want baked into this repo's git history, even ones Google itself doesn't treat as secret.
+
+### Getting the Firebase identifiers yourself
+
+They're ordinary Android app resources, not obfuscated or encrypted:
+
+1. Download the Cookidoo Android APK (e.g. from APKMirror) matching your device's architecture.
+2. If you got an `.apkm` bundle, `unzip` out `base.apk` from it first.
+3. Decode it with [`apktool`](https://apktool.org/): `apktool d -s -f base.apk -o decoded` (`-s` skips the slow smali disassembly, we don't need it).
+4. Look in `decoded/res/values/strings.xml` for `gcm_defaultSenderId`, `google_app_id`, `google_api_key`, and `project_id`.
+
+These identify Cookidoo's Firebase project to Google, the same way any Firebase API key does -- not an authentication secret (Google's own security model puts access control server-side, in Firebase Security Rules), but still Cookidoo's own, so kept out of this repo.
+
+### Receiving the messages
+
+Nothing on the Node-RED Flow Library currently does this reliably. The obvious candidate, `node-red-contrib-fcm-receive-node`, is built on a `push-receiver` version whose registration endpoint Google has since retired -- a plain `404` on `/fcm/connect/subscribe`, confirmed by testing it directly. That's not Cookidoo-specific; it's broken for any Firebase project now, since it only ever registered with a sender id rather than the full app config.
+
+What does work is [`@eneris/push-receiver`](https://www.npmjs.com/package/@eneris/push-receiver), a maintained library that registers with the full Firebase app config. A minimal bridge, as a **Function** node in your own flow (`npm install @eneris/push-receiver` into your Node-RED user directory, and enable `functionExternalModules: true` in `settings.js` so the Function node can `require` it):
+
+**On Start** tab:
+
+```js
+const { PushReceiver } = require("@eneris/push-receiver");
+
+const instance = new PushReceiver({
+  bundleId: "com.vorwerk.cookidoo",
+  firebase: {
+    projectId: "<from strings.xml>",
+    appId: "<from strings.xml>",
+    apiKey: "<from strings.xml>",
+    messagingSenderId: "<from strings.xml>",
+  },
+});
+
+instance.onNotification((data) => node.send({ payload: data }));
+
+await instance.connect();
+node.warn("FCM token: " + instance.fcmToken);
+// Register this token once with a cookidoo-devices node's register-push-token
+// operation, using a UUID you generate and keep stable as mobileAppId.
+
+context.set("pushReceiver", instance);
+```
+
+**On Stop** tab:
+
+```js
+const instance = context.get("pushReceiver");
+if (instance) instance.destroy();
+```
+
+Leave the main **On Message** tab empty (`return null;`) -- this node only sets up the listener; `onNotification` sends messages asynchronously on its own. Wire its output into a **cookidoo-devices** node set to `decode-push`. A message without recognizable cook state (e.g. an unrelated FCM data message) is dropped rather than forwarded.
+
 ## Status
 
 Early, incremental slice: config node, `cookidoo-get-user-info`, the shopping list (`cookidoo-shopping-recipes`, `cookidoo-shopping-additional-items`, `cookidoo-clear-shopping-list`), recipes (`cookidoo-search-recipes`, `cookidoo-get-recipe-details`), custom recipes (`cookidoo-custom-recipes`), the calendar (`cookidoo-calendar`), collections (`cookidoo-collections`), devices/remote-monitoring (`cookidoo-devices`), and the cooking history (`cookidoo-get-cooking-history`). More nodes are added as the underlying `cookidoo-api-js` client grows.

@@ -1,6 +1,9 @@
 "use strict";
 
-const { cookidooCookingActivityFromPush } = require("cookidoo-api-js");
+const { cookidooCookingActivityFromPush, cookidooCookStatePayload } = require("cookidoo-api-js");
+
+/** Sentinel returned by the decode-push handler for a message without cook state. */
+const NO_COOK_STATE = Symbol("no-cook-state");
 
 /**
  * Paired-appliance and remote-monitoring (push-token) operations.
@@ -11,7 +14,10 @@ const { cookidooCookingActivityFromPush } = require("cookidoo-api-js");
  * `decode-push` is the odd one out: it doesn't call the Cookidoo API at
  * all. Appliance state arrives out of band as a Firebase Cloud Messaging
  * data message, obtained and received by your own FCM client -- this node
- * only decodes an already-received payload. See the node's help.
+ * only decodes an already-received payload. See the node's help. Not every
+ * FCM message carries cook state (e.g. an unrelated data message, or the
+ * app's push service using a different envelope shape we don't recognize);
+ * such a message is dropped rather than forwarded or errored on.
  */
 const OPERATIONS = {
   "get-devices": (client) => client.getDevices(),
@@ -19,7 +25,10 @@ const OPERATIONS = {
   "register-push-token": (client, payload) =>
     client.registerPushToken(payload.pushToken, payload.mobileAppId),
   "unregister-push-token": (client, payload) => client.unregisterPushToken(payload),
-  "decode-push": (client, payload) => cookidooCookingActivityFromPush(payload),
+  "decode-push": (client, payload) => {
+    const cookState = cookidooCookStatePayload(payload);
+    return cookState === null ? NO_COOK_STATE : cookidooCookingActivityFromPush(cookState);
+  },
 };
 
 module.exports = function (RED) {
@@ -42,7 +51,13 @@ module.exports = function (RED) {
       }
       try {
         const client = node.cookidooConfig ? await node.cookidooConfig.getClient() : null;
-        msg.payload = await handler(client, msg.payload);
+        const result = await handler(client, msg.payload);
+        if (result === NO_COOK_STATE) {
+          // Not a cook-state message -- nothing to report, not an error either.
+          done();
+          return;
+        }
+        msg.payload = result;
         send(msg);
         done();
       } catch (err) {
