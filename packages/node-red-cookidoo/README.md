@@ -40,7 +40,7 @@ Early, incremental slice: config node, `cookidoo-get-user-info`, the shopping li
 
 ```bash
 cd ~/.node-red
-npm install node-red-cookidoo
+npm install @bastianh/node-red-cookidoo
 ```
 
 ## Development
@@ -49,7 +49,7 @@ From the repo root:
 
 ```bash
 pnpm install
-pnpm --filter node-red-cookidoo test
+pnpm --filter @bastianh/node-red-cookidoo test
 ```
 
 For manual, interactive testing in an actual Node-RED editor, see the [`docker-compose.yml`](../../docker-compose.yml) at the repo root.

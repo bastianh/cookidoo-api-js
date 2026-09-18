@@ -1,12 +1,13 @@
 # Spins up a stock Node-RED for manual, interactive testing of the Cookidoo
 # nodes against a real account -- no publishing, no custom image required.
 #
-# `cookidoo-api-js` and `node-red-cookidoo` are bind-mounted straight from
-# the working tree into /data/node_modules, in the same flat layout `npm`
-# would produce, so Node's module resolution finds `cookidoo-api-js` from
-# within `node-red-cookidoo` without either package needing to be published.
-# Node-RED discovers any node module dropped into its user directory's
-# node_modules on startup, no entry in /data/package.json required.
+# `cookidoo-api-js` and `@bastianh/node-red-cookidoo` are bind-mounted straight
+# from the working tree into /data/node_modules, in the same layout `npm`
+# would produce (the latter under its npm scope's own subfolder), so Node's
+# module resolution finds `cookidoo-api-js` from within the Node-RED package
+# without either package needing to be published. Node-RED discovers any node
+# module dropped into its user directory's node_modules on startup (scoped
+# packages included), no entry in /data/package.json required.
 #
 # One-off manual testing:
 #   pnpm --filter cookidoo-api-js build   # dist/ must exist first
@@ -38,8 +39,8 @@ services:
       - node_red_data:/data
       - ./packages/cookidoo-api-js/dist:/data/node_modules/cookidoo-api-js/dist:ro
       - ./packages/cookidoo-api-js/package.json:/data/node_modules/cookidoo-api-js/package.json:ro
-      - ./packages/node-red-cookidoo/nodes:/data/node_modules/node-red-cookidoo/nodes:ro
-      - ./packages/node-red-cookidoo/package.json:/data/node_modules/node-red-cookidoo/package.json:ro
+      - ./packages/node-red-cookidoo/nodes:/data/node_modules/@bastianh/node-red-cookidoo/nodes:ro
+      - ./packages/node-red-cookidoo/package.json:/data/node_modules/@bastianh/node-red-cookidoo/package.json:ro
 
 volumes:
   node_red_data:

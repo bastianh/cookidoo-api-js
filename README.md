@@ -9,7 +9,7 @@ The developers of this project are in no way endorsed by or affiliated with Cook
 ## Packages
 
 - [`packages/cookidoo-api-js`](packages/cookidoo-api-js) — the core client library (TypeScript, published as `cookidoo-api-js`). Signs in via the official OAuth2/PKCE login flow and exposes the Cookidoo API.
-- [`packages/node-red-cookidoo`](packages/node-red-cookidoo) — Node-RED nodes (published as `node-red-cookidoo`) built on `cookidoo-api-js`, for use in Node-RED flows.
+- [`packages/node-red-cookidoo`](packages/node-red-cookidoo) — Node-RED nodes (published as `@bastianh/node-red-cookidoo`) built on `cookidoo-api-js`, for use in Node-RED flows.
 
 ## Status
 
