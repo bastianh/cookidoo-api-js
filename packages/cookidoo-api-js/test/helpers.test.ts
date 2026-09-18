@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   cookidooAdditionalItemFromJson,
+  cookidooCalendarDayFromJson,
   cookidooCustomRecipeFromJson,
   cookidooIngredientFromJson,
   cookidooIngredientItemFromJson,
@@ -444,6 +445,80 @@ describe("cookidooCustomRecipeFromJson", () => {
     expect(recipe.image).toBeNull();
     expect(recipe.totalTime).toBe(0);
     expect(recipe.activeTime).toBe(0);
+  });
+});
+
+describe("cookidooCalendarDayFromJson", () => {
+  const localization = {
+    countryCode: "gb",
+    language: "en-GB",
+    url: "https://cookidoo.co.uk/foundation/en-GB",
+  };
+
+  it("maps id/title/recipes, coercing a numeric-string totalTime", () => {
+    const day = cookidooCalendarDayFromJson(
+      {
+        id: "2025-03-04",
+        title: "2025-03-04",
+        dayKey: "2025-03-04",
+        recipes: [
+          {
+            id: "r214846",
+            title: "Waffles",
+            totalTime: "1500.0",
+            assets: {
+              images: {
+                square: "https://assets.test/{transformation}/x.jpg",
+                portrait: null,
+                landscape: null,
+              },
+            },
+          },
+        ],
+        customerRecipeIds: [],
+      },
+      localization,
+    );
+    expect(day.id).toBe("2025-03-04");
+    expect(day.title).toBe("2025-03-04");
+    expect(day.recipes).toEqual([
+      {
+        id: "r214846",
+        name: "Waffles",
+        totalTime: 1500,
+        thumbnail: "https://assets.test/t_web_shared_recipe_221x240/x.jpg",
+        image: "https://assets.test/t_web_rdp_recipe_584x480_1_5x/x.jpg",
+        url: "https://cookidoo.co.uk/recipes/recipe/en-GB/r214846",
+      },
+    ]);
+    expect(day.customerRecipeIds).toEqual([]);
+  });
+
+  it("appends customerRecipes after recipes and carries customerRecipeIds", () => {
+    const day = cookidooCalendarDayFromJson({
+      id: "2025-08-11",
+      title: "11.08.2025",
+      dayKey: "2025-08-11",
+      recipes: [],
+      customerRecipes: [
+        { id: "cr1", title: "Vongole", totalTime: 1800, assets: null },
+      ],
+      customerRecipeIds: ["01K2CTJ9Y1BABRG5MXK44CFZS4"],
+    });
+    expect(day.recipes).toEqual([
+      { id: "cr1", name: "Vongole", totalTime: 1800, thumbnail: null, image: null, url: "" },
+    ]);
+    expect(day.customerRecipeIds).toEqual(["01K2CTJ9Y1BABRG5MXK44CFZS4"]);
+  });
+
+  it("defaults customerRecipeIds to an empty array when absent", () => {
+    const day = cookidooCalendarDayFromJson({
+      id: "2025-08-11",
+      title: "11.08.2025",
+      dayKey: "2025-08-11",
+      recipes: [],
+    });
+    expect(day.customerRecipeIds).toEqual([]);
   });
 });
 

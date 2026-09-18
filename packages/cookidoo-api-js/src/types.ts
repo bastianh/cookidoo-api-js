@@ -237,3 +237,27 @@ export interface CookidooCustomRecipe {
   image: string | null;
   url: string;
 }
+
+/** A recipe planned for a calendar day. */
+export interface CookidooCalendarDayRecipe {
+  id: string;
+  name: string;
+  totalTime: number;
+  thumbnail: string | null;
+  image: string | null;
+  url: string;
+}
+
+/**
+ * A calendar day, e.g. the result of planning recipes for it.
+ *
+ * `id`/`title` are the day's own ISO-8601 date (`YYYY-MM-DD`) once no
+ * recipes are left planned for it -- see {@link Cookidoo.removeRecipeFromCalendar}.
+ */
+export interface CookidooCalendarDay {
+  id: string;
+  title: string;
+  recipes: CookidooCalendarDayRecipe[];
+  /** IDs of custom recipes planned for the day, when returned by the API. */
+  customerRecipeIds: string[];
+}

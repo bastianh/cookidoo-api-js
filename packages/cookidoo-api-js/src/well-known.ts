@@ -18,6 +18,7 @@
 import {
   ADD_ADDITIONAL_ITEMS_PATH,
   ADD_INGREDIENT_ITEMS_FOR_RECIPES_PATH,
+  ADD_RECIPES_TO_CALENDAR_PATH,
   COMMUNITY_PROFILE_PATH,
   CUSTOM_RECIPE_PATH,
   CUSTOM_RECIPES_PATH,
@@ -27,8 +28,10 @@ import {
   EDIT_OWNERSHIP_INGREDIENT_ITEMS_PATH,
   LOGIN_HEADERS,
   RECIPE_PATH,
+  RECIPES_IN_CALENDAR_WEEK_PATH,
   REMOVE_ADDITIONAL_ITEMS_PATH,
   REMOVE_INGREDIENT_ITEMS_FOR_RECIPES_PATH,
+  REMOVE_RECIPE_FROM_CALENDAR_PATH,
   SEARCH_PATH,
   SHOPPING_LIST_RECIPES_PATH,
 } from "./const.js";
@@ -63,6 +66,9 @@ export const ENDPOINT_RELS: Readonly<Record<string, readonly [string, string]>> 
   "search:home": ["search", SEARCH_PATH],
   "customer-recipes:recipe-create": ["created-recipes", CUSTOM_RECIPES_PATH],
   "customer-recipes:recipe-details": ["created-recipes", CUSTOM_RECIPE_PATH],
+  "planning:api-my-week-from-date": ["planning", RECIPES_IN_CALENDAR_WEEK_PATH],
+  "planning:api-my-day": ["planning", ADD_RECIPES_TO_CALENDAR_PATH],
+  "planning:api-my-day-recipes": ["planning", REMOVE_RECIPE_FROM_CALENDAR_PATH],
 };
 
 const DOMAIN_PREFIX_RE = /^https?:\/\/[^/]+/;

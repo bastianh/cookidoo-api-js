@@ -193,3 +193,24 @@ export interface CustomRecipeJSON {
 export interface CustomRecipesJSON {
   items: CustomRecipeJSON[];
 }
+
+export interface CalendarDayRecipeAssetsJSON {
+  images: DescriptiveAssetJSON | null;
+}
+
+export interface CalendarDayRecipeJSON {
+  id: string;
+  title: string;
+  /** Observed as a numeric-looking string in some responses -- coerced with `Number()` on the way out. */
+  totalTime: number | string;
+  assets: CalendarDayRecipeAssetsJSON | null;
+}
+
+export interface CalendarDayJSON {
+  id: string;
+  title: string;
+  dayKey: string;
+  recipes: CalendarDayRecipeJSON[];
+  customerRecipes?: CalendarDayRecipeJSON[];
+  customerRecipeIds?: string[];
+}
