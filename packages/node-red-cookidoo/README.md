@@ -13,8 +13,9 @@ The developers of this package are in no way endorsed by or affiliated with Cook
 - **cookidoo-shopping-recipes** — shopping-list operations scoped to recipes and their ingredient items (get the list, get ingredient items, add/remove ingredients for a recipe or a custom recipe, edit ingredient ownership), picked via an **operation** dropdown -- overridable per message with `msg.operation`. `msg.payload` is the operation's input where one is needed, and becomes its result on output. See the node's help in the editor for the exact `msg.payload` shape per operation.
 - **cookidoo-shopping-additional-items** — the same operation-dropdown pattern as above, for additional (not recipe-linked) items: get, add, edit (name), edit ownership, remove.
 - **cookidoo-clear-shopping-list** — removes *everything* from the shopping list. Deliberately its own node rather than one more dropdown entry on the two above: a destructive, whole-list action shouldn't be a stray dropdown selection away.
-- **cookidoo-search-recipes** — searches recipes. `msg.payload` in is a plain search string (shorthand for `{ query: ... }`) or a full options object; the result replaces it. Just two nodes for the whole recipes area so far (no operation dropdown needed).
+- **cookidoo-search-recipes** — searches recipes. `msg.payload` in is a plain search string (shorthand for `{ query: ... }`) or a full options object; the result replaces it.
 - **cookidoo-get-recipe-details** — fetches a recipe's full details (ingredients, step groups, nutrition groups, categories, collections, utensils, serving size, active/total time). `msg.payload` in is the recipe id (e.g. from a `cookidoo-search-recipes` hit); the result replaces it.
+- **cookidoo-custom-recipes** — CRUD on the signed-in user's custom recipes (list, get, add-from an official recipe, remove), picked via an **operation** dropdown -- overridable per message with `msg.operation`, same pattern as the shopping-list nodes.
 
 ## Token persistence
 
@@ -29,7 +30,7 @@ Practically, for **cookidoo-config**:
 
 ## Status
 
-Early, incremental slice: config node, `cookidoo-get-user-info`, the shopping list (`cookidoo-shopping-recipes`, `cookidoo-shopping-additional-items`, `cookidoo-clear-shopping-list`), and recipes (`cookidoo-search-recipes`, `cookidoo-get-recipe-details`). More nodes (custom recipes, calendar, ...) are added as the underlying `cookidoo-api-js` client grows.
+Early, incremental slice: config node, `cookidoo-get-user-info`, the shopping list (`cookidoo-shopping-recipes`, `cookidoo-shopping-additional-items`, `cookidoo-clear-shopping-list`), recipes (`cookidoo-search-recipes`, `cookidoo-get-recipe-details`), and custom recipes (`cookidoo-custom-recipes`). More nodes (calendar, collections, ...) are added as the underlying `cookidoo-api-js` client grows.
 
 ## Installation
 
