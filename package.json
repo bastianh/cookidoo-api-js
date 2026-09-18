@@ -2,14 +2,20 @@
   "name": "cookidoo-api-js-monorepo",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.25.0",
   "scripts": {
     "build": "pnpm --if-present -r run build",
     "test": "pnpm --if-present -r run test",
     "lint": "eslint .",
     "typecheck": "pnpm --if-present -r run typecheck",
-    "dev:node-red": "node scripts/watch-node-red.mjs"
+    "dev:node-red": "node scripts/watch-node-red.mjs",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "changeset publish"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.3",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",
@@ -20,6 +26,8 @@
     "node": ">=18.17"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
