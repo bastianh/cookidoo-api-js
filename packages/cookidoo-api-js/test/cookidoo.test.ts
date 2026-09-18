@@ -70,6 +70,21 @@ const RAW_CUSTOM_RECIPE = {
   },
 };
 
+const RAW_CALENDAR_DAY = {
+  id: "2025-03-04",
+  title: "2025-03-04",
+  dayKey: "2025-03-04",
+  recipes: [
+    {
+      id: "r214846",
+      title: "Waffles",
+      totalTime: "1500.0",
+      assets: { images: { square: "https://assets.test/{transformation}/x.jpg" } },
+    },
+  ],
+  customerRecipeIds: [],
+};
+
 /** A hand-rolled fetch stub that plays the CIAM + Cookidoo backends for tests. */
 function createMockFetch(overrides: { password?: string; errorRedirect?: boolean } = {}) {
   let capturedState: string | null = null;
@@ -235,6 +250,38 @@ function createMockFetch(overrides: { password?: string; errorRedirect?: boolean
       if (url.pathname === "/created-recipes/de-TEST/cr1") {
         if (method === "GET") return jsonResponse(RAW_CUSTOM_RECIPE);
         if (method === "DELETE") return new Response(null, { status: 204 });
+      }
+
+      if (url.pathname === "/planning/.well-known/home") {
+        return jsonResponse({
+          _links: {
+            "planning:api-my-week-from-date": {
+              href: "/planning/{lang}/api/my-week/{dayKey}",
+            },
+            "planning:api-my-day": { href: "/planning/{lang}/api/my-day" },
+            "planning:api-my-day-recipes": {
+              href: "/planning/{lang}/api/my-day/{dayKey}/recipes/{recipeId}",
+            },
+          },
+        });
+      }
+      if (url.pathname === "/planning/de-TEST/api/my-week/2025-03-04" && method === "GET") {
+        return jsonResponse({ myDays: [RAW_CALENDAR_DAY] });
+      }
+      if (url.pathname === "/planning/de-TEST/api/my-day" && method === "PUT") {
+        return jsonResponse({ content: RAW_CALENDAR_DAY });
+      }
+      if (
+        url.pathname === "/planning/de-TEST/api/my-day/2025-03-04/recipes/r214846" &&
+        method === "DELETE"
+      ) {
+        return jsonResponse({ content: RAW_CALENDAR_DAY });
+      }
+      if (
+        url.pathname === "/planning/de-TEST/api/my-day/2025-03-04/recipes/last-one" &&
+        method === "DELETE"
+      ) {
+        return jsonResponse({ content: null });
       }
     }
 
@@ -575,5 +622,107 @@ describe("Cookidoo custom recipes", () => {
   it("removes a custom recipe", async () => {
     const client = await loggedInClient();
     await expect(client.removeCustomRecipe("cr1")).resolves.toBeUndefined();
+  });
+});
+
+describe("Cookidoo calendar", () => {
+  async function loggedInClient() {
+    const { fetchMock } = createMockFetch();
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: fetchMock },
+    );
+    await client.login();
+    return client;
+  }
+
+  const EXPECTED_DAY = {
+    id: "2025-03-04",
+    title: "2025-03-04",
+    recipes: [
+      {
+        id: "r214846",
+        name: "Waffles",
+        totalTime: 1500,
+        thumbnail: "https://assets.test/t_web_shared_recipe_221x240/x.jpg",
+        image: "https://assets.test/t_web_rdp_recipe_584x480_1_5x/x.jpg",
+        url: "https://cookidoo.test/recipes/recipe/de-TEST/r214846",
+      },
+    ],
+    customerRecipeIds: [],
+  };
+
+  it("gets the recipes planned in a calendar week", async () => {
+    const client = await loggedInClient();
+    const days = await client.getRecipesInCalendarWeek("2025-03-04");
+    expect(days).toEqual([EXPECTED_DAY]);
+  });
+
+  it("adds recipes to a calendar day", async () => {
+    const client = await loggedInClient();
+    const day = await client.addRecipesToCalendar("2025-03-04", ["r214846"]);
+    expect(day).toEqual(EXPECTED_DAY);
+  });
+
+  it("adds custom recipes to a calendar day, marking the source as CUSTOMER", async () => {
+    const { fetchMock } = createMockFetch();
+    let capturedBody: unknown;
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/planning/de-TEST/api/my-day" && init?.body) {
+        capturedBody = JSON.parse(init.body as string);
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    await client.addCustomRecipesToCalendar("2025-03-04", ["cr1"]);
+    expect(capturedBody).toEqual({
+      recipeIds: ["cr1"],
+      dayKey: "2025-03-04",
+      recipeSource: "CUSTOMER",
+    });
+  });
+
+  it("removes a recipe from a calendar day", async () => {
+    const client = await loggedInClient();
+    const day = await client.removeRecipeFromCalendar("2025-03-04", "r214846");
+    expect(day).toEqual(EXPECTED_DAY);
+  });
+
+  it("returns an empty day when the removed recipe was the last one", async () => {
+    const client = await loggedInClient();
+    const day = await client.removeRecipeFromCalendar("2025-03-04", "last-one");
+    expect(day).toEqual({
+      id: "2025-03-04",
+      title: "2025-03-04",
+      recipes: [],
+      customerRecipeIds: [],
+    });
+  });
+
+  it("removes a custom recipe from a calendar day, sending recipeSource=CUSTOMER", async () => {
+    const { fetchMock } = createMockFetch();
+    let capturedParams: URLSearchParams | null = null;
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/planning/de-TEST/api/my-day/2025-03-04/recipes/r214846") {
+        capturedParams = url.searchParams;
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    await client.removeCustomRecipeFromCalendar("2025-03-04", "r214846");
+    expect(capturedParams).not.toBeNull();
+    expect((capturedParams as unknown as URLSearchParams).get("recipeSource")).toBe("CUSTOMER");
   });
 });

@@ -60,3 +60,8 @@ export const SEARCH_PATH = "search/{locale}";
 export const CUSTOM_RECIPES_PATH = "created-recipes/{language}";
 export const CUSTOM_RECIPES_PATH_ACCEPT = "application/vnd.vorwerk.customer-recipe.full+json";
 export const CUSTOM_RECIPE_PATH = "created-recipes/{language}/{id}";
+
+export const RECIPES_IN_CALENDAR_WEEK_PATH = "planning/{language}/api/my-week/{day}";
+export const ADD_RECIPES_TO_CALENDAR_PATH = "planning/{language}/api/my-day";
+export const REMOVE_RECIPE_FROM_CALENDAR_PATH =
+  "planning/{language}/api/my-day/{day}/recipes/{recipe}";

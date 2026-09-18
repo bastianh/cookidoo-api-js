@@ -3,6 +3,8 @@
 import localizationOptions from "./localization.json" with { type: "json" };
 import type {
   AdditionalItemJSON,
+  CalendarDayJSON,
+  CalendarDayRecipeJSON,
   CommunityProfileJSON,
   CustomRecipeJSON,
   CustomRecipeTextJSON,
@@ -16,6 +18,8 @@ import type {
 } from "./raw-types.js";
 import type {
   CookidooAdditionalItem,
+  CookidooCalendarDay,
+  CookidooCalendarDayRecipe,
   CookidooCustomRecipe,
   CookidooIngredient,
   CookidooLocalizationConfig,
@@ -297,6 +301,44 @@ export function cookidooCustomRecipeFromJson(
     thumbnail,
     image,
     url: constructRecipeUrl(localization, recipe.recipeId, "created-recipes"),
+  };
+}
+
+function cookidooCalendarDayRecipeFromJson(
+  recipe: CalendarDayRecipeJSON,
+  localization?: CookidooLocalizationConfig,
+): CookidooCalendarDayRecipe {
+  const images = recipe.assets?.images;
+  const [thumbnail, image] = images
+    ? extractImagesFromDescriptiveAssets([images])
+    : [null, null];
+  return {
+    id: recipe.id,
+    name: recipe.title,
+    // Observed as a numeric-looking string in some live responses.
+    totalTime: Number(recipe.totalTime),
+    thumbnail,
+    image,
+    url: constructRecipeUrl(localization, recipe.id),
+  };
+}
+
+/** Convert a calendar day received from the API to a Cookidoo calendar day. */
+export function cookidooCalendarDayFromJson(
+  calendarDay: CalendarDayJSON,
+  localization?: CookidooLocalizationConfig,
+): CookidooCalendarDay {
+  const regular = calendarDay.recipes.map((recipe) =>
+    cookidooCalendarDayRecipeFromJson(recipe, localization),
+  );
+  const custom = (calendarDay.customerRecipes ?? []).map((recipe) =>
+    cookidooCalendarDayRecipeFromJson(recipe, localization),
+  );
+  return {
+    id: calendarDay.id,
+    title: calendarDay.title,
+    recipes: [...regular, ...custom],
+    customerRecipeIds: [...(calendarDay.customerRecipeIds ?? [])],
   };
 }
 

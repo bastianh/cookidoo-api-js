@@ -85,9 +85,25 @@ const copy = await cookidoo.addCustomRecipeFrom(results.recipes[0].id, 4);
 await cookidoo.removeCustomRecipe(copy.id);
 ```
 
+Calendar:
+
+```ts
+const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+
+const week = await cookidoo.getRecipesInCalendarWeek(today);
+
+const day = await cookidoo.addRecipesToCalendar(today, [results.recipes[0].id]);
+await cookidoo.removeRecipeFromCalendar(today, results.recipes[0].id);
+
+// Custom recipes have their own add/remove pair
+await cookidoo.addCustomRecipesToCalendar(today, [copy.id]);
+```
+
+`day` is always an ISO-8601 `YYYY-MM-DD` string, never a `Date` -- that's what actually goes into the request either way, and it sidesteps `Date`'s own timezone footguns for a date-only value.
+
 ## Status
 
-Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items — get/add/remove/edit-ownership, including custom recipes, plus clearing the whole list), recipes (`searchRecipes`, `getRecipeDetails`), and custom recipes (`getCustomRecipe`, `listCustomRecipes`, `addCustomRecipeFrom`, `removeCustomRecipe`). More of the Python client's surface (calendar, collections, device/remote-monitoring) is ported incrementally.
+Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items — get/add/remove/edit-ownership, including custom recipes, plus clearing the whole list), recipes (`searchRecipes`, `getRecipeDetails`), custom recipes (`getCustomRecipe`, `listCustomRecipes`, `addCustomRecipeFrom`, `removeCustomRecipe`), and the calendar (`getRecipesInCalendarWeek`, `add/removeRecipesToCalendar`, plus the custom-recipe equivalents). More of the Python client's surface (collections, device/remote-monitoring) is ported incrementally.
 
 ## Exceptions
 

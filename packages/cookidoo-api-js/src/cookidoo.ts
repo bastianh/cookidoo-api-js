@@ -21,6 +21,7 @@ import {
 } from "./exceptions.js";
 import {
   cookidooAdditionalItemFromJson,
+  cookidooCalendarDayFromJson,
   cookidooCustomRecipeFromJson,
   cookidooIngredientItemFromJson,
   cookidooRecipeDetailsFromJson,
@@ -32,6 +33,7 @@ import {
 import { CookieJar, jarRequest, type FetchLike } from "./http.js";
 import type {
   AdditionalItemJSON,
+  CalendarDayJSON,
   CommunityProfileJSON,
   CustomRecipeJSON,
   CustomRecipesJSON,
@@ -44,6 +46,7 @@ import {
   defaultConfig,
   type CookidooAdditionalItem,
   type CookidooAuthData,
+  type CookidooCalendarDay,
   type CookidooConfig,
   type CookidooCustomRecipe,
   type CookidooIngredientItem,
@@ -545,6 +548,103 @@ export class Cookidoo {
     await this.requestJson("DELETE", url, "remove custom recipe", { parseResponse: false });
   }
 
+  /**
+   * Get the recipes planned in the calendar week containing `day`.
+   *
+   * @param day An ISO-8601 date (`YYYY-MM-DD`) in the week to fetch.
+   */
+  async getRecipesInCalendarWeek(day: string): Promise<CookidooCalendarDay[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("planning:api-my-week-from-date", { day });
+    const result = await this.requestJson("GET", url, "loading recipes in calendar week");
+    const data = Cookidoo.ensureMapping(result, "loading recipes in calendar week");
+    return Cookidoo.parseResult("loading recipes in calendar week", () =>
+      (data.myDays as CalendarDayJSON[]).map((calendarDay) =>
+        cookidooCalendarDayFromJson(calendarDay, this.cfg.localization),
+      ),
+    );
+  }
+
+  /**
+   * Add recipes to a calendar day.
+   *
+   * @param day An ISO-8601 date (`YYYY-MM-DD`).
+   * @param recipeIds The recipe ids to add.
+   */
+  async addRecipesToCalendar(day: string, recipeIds: string[]): Promise<CookidooCalendarDay> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("planning:api-my-day");
+    const result = await this.requestJson("PUT", url, "add recipes to calendar", {
+      json: { recipeIds, dayKey: day },
+    });
+    const data = Cookidoo.ensureMapping(result, "add recipes to calendar");
+    return Cookidoo.parseResult("loading added recipes", () =>
+      cookidooCalendarDayFromJson(data.content as CalendarDayJSON, this.cfg.localization),
+    );
+  }
+
+  /**
+   * Remove a recipe from a calendar day.
+   *
+   * @param day An ISO-8601 date (`YYYY-MM-DD`).
+   * @param recipeId The recipe id to remove.
+   */
+  async removeRecipeFromCalendar(day: string, recipeId: string): Promise<CookidooCalendarDay> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("planning:api-my-day-recipes", { day, recipe: recipeId });
+    const result = await this.requestJson("DELETE", url, "remove recipe from calendar");
+    const data = Cookidoo.ensureMapping(result, "remove recipe from calendar");
+    // A day with no recipes left no longer exists as an entity; the API
+    // returns a null content for it rather than an (empty) day document.
+    if (data.content == null) return Cookidoo.emptyCalendarDay(day);
+    return Cookidoo.parseResult("loading removed recipe", () =>
+      cookidooCalendarDayFromJson(data.content as CalendarDayJSON, this.cfg.localization),
+    );
+  }
+
+  /**
+   * Add custom recipes to a calendar day.
+   *
+   * @param day An ISO-8601 date (`YYYY-MM-DD`).
+   * @param recipeIds The custom recipe ids to add.
+   */
+  async addCustomRecipesToCalendar(
+    day: string,
+    recipeIds: string[],
+  ): Promise<CookidooCalendarDay> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("planning:api-my-day");
+    const result = await this.requestJson("PUT", url, "add custom recipes to calendar", {
+      json: { recipeIds, dayKey: day, recipeSource: "CUSTOMER" },
+    });
+    const data = Cookidoo.ensureMapping(result, "add custom recipes to calendar");
+    return Cookidoo.parseResult("loading added custom recipes", () =>
+      cookidooCalendarDayFromJson(data.content as CalendarDayJSON, this.cfg.localization),
+    );
+  }
+
+  /**
+   * Remove a custom recipe from a calendar day.
+   *
+   * @param day An ISO-8601 date (`YYYY-MM-DD`).
+   * @param recipeId The custom recipe id to remove.
+   */
+  async removeCustomRecipeFromCalendar(
+    day: string,
+    recipeId: string,
+  ): Promise<CookidooCalendarDay> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("planning:api-my-day-recipes", { day, recipe: recipeId });
+    const result = await this.requestJson("DELETE", url, "remove custom recipe from calendar", {
+      params: { recipeSource: "CUSTOMER" },
+    });
+    const data = Cookidoo.ensureMapping(result, "remove custom recipe from calendar");
+    if (data.content == null) return Cookidoo.emptyCalendarDay(day);
+    return Cookidoo.parseResult("loading custom removed recipe", () =>
+      cookidooCalendarDayFromJson(data.content as CalendarDayJSON, this.cfg.localization),
+    );
+  }
+
   // -- internal request helpers -------------------------------------------
 
   /** Build the full URL for a discovered endpoint rel, substituting `{tokens}`. */
@@ -579,6 +679,17 @@ export class Cookidoo {
         { cause: e },
       );
     }
+  }
+
+  /**
+   * Build an empty calendar day for a day with no recipes left.
+   *
+   * The API returns a null `content` when a recipe removal leaves a
+   * calendar day with no recipes, since the (now empty) day no longer
+   * exists as an entity to return.
+   */
+  private static emptyCalendarDay(day: string): CookidooCalendarDay {
+    return { id: day, title: day, recipes: [], customerRecipeIds: [] };
   }
 
   private async requestJson(

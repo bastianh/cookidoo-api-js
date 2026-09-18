@@ -19,6 +19,8 @@ export {
   ThermomixMachineType,
   type CookidooAdditionalItem,
   type CookidooAuthData,
+  type CookidooCalendarDay,
+  type CookidooCalendarDayRecipe,
   type CookidooCategory,
   type CookidooConfig,
   type CookidooCustomRecipe,
