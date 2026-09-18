@@ -85,6 +85,38 @@ const RAW_CALENDAR_DAY = {
   customerRecipeIds: [],
 };
 
+const RAW_MANAGED_COLLECTION = {
+  id: "col500561",
+  title: "Schneeweiss und Zuckersüss",
+  description: "Schneeweisse Delikatessen.",
+  chapters: [
+    {
+      title: "Schneeweiss und Zuckersüss",
+      recipes: [{ id: "r907016", title: "Mini-Pavlova mit Orangen", type: "VORWERK", totalTime: "6600.0" }],
+    },
+  ],
+  listType: "MANAGEDLIST",
+  author: "Vorwerk",
+};
+
+const RAW_CUSTOM_COLLECTION = {
+  id: "01JC1SRPRSW0SHE0AK8GCASABX",
+  title: "Testliste1",
+  chapters: [{ title: "", recipes: [] }],
+  listType: "CUSTOMLIST",
+  author: "user-1",
+};
+
+const RAW_CUSTOM_COLLECTION_WITH_RECIPE = {
+  ...RAW_CUSTOM_COLLECTION,
+  chapters: [
+    {
+      title: "",
+      recipes: [{ id: "r907015", title: "Kokos Pralinen", type: "VORWERK", totalTime: "32400.0" }],
+    },
+  ],
+};
+
 /** A hand-rolled fetch stub that plays the CIAM + Cookidoo backends for tests. */
 function createMockFetch(overrides: { password?: string; errorRedirect?: boolean } = {}) {
   let capturedState: string | null = null;
@@ -282,6 +314,60 @@ function createMockFetch(overrides: { password?: string; errorRedirect?: boolean
         method === "DELETE"
       ) {
         return jsonResponse({ content: null });
+      }
+
+      if (url.pathname === "/organize/.well-known/home") {
+        return jsonResponse({
+          _links: {
+            "organize:api-managed-list": { href: "/organize/{lang}/api/managed-list" },
+            "organize:api-managed-list-single": {
+              href: "/organize/{lang}/api/managed-list/{id}",
+            },
+            "organize:api-custom-list": { href: "/organize/{lang}/api/custom-list" },
+            "organize:api-custom-list-modify": {
+              href: "/organize/{lang}/api/custom-list/{id}",
+            },
+            "organize:api-custom-list-recipe": {
+              href: "/organize/{lang}/api/custom-list/{id}/recipes/{recipeId}",
+            },
+          },
+        });
+      }
+      if (url.pathname === "/organize/de-TEST/api/managed-list") {
+        if (method === "GET") {
+          return jsonResponse({
+            managedlists: [RAW_MANAGED_COLLECTION],
+            page: { totalElements: 1, totalPages: 1 },
+          });
+        }
+        if (method === "POST") {
+          return jsonResponse({ content: RAW_MANAGED_COLLECTION });
+        }
+      }
+      if (url.pathname === "/organize/de-TEST/api/managed-list/col500561" && method === "DELETE") {
+        return new Response(null, { status: 204 });
+      }
+      if (url.pathname === "/organize/de-TEST/api/custom-list") {
+        if (method === "GET") {
+          return jsonResponse({
+            customlists: [RAW_CUSTOM_COLLECTION],
+            page: { totalElements: 1, totalPages: 1 },
+          });
+        }
+        if (method === "POST") {
+          return jsonResponse({ content: RAW_CUSTOM_COLLECTION });
+        }
+      }
+      if (url.pathname === "/organize/de-TEST/api/custom-list/01JC1SRPRSW0SHE0AK8GCASABX") {
+        if (method === "DELETE") return new Response(null, { status: 204 });
+        if (method === "PUT") return jsonResponse({ content: RAW_CUSTOM_COLLECTION_WITH_RECIPE });
+      }
+      if (
+        url.pathname ===
+          "/organize/de-TEST/api/custom-list/01JC1SRPRSW0SHE0AK8GCASABX/recipes/r907015" &&
+        method === "DELETE"
+      ) {
+        return jsonResponse({ content: RAW_CUSTOM_COLLECTION });
       }
     }
 
@@ -724,5 +810,159 @@ describe("Cookidoo calendar", () => {
     await client.removeCustomRecipeFromCalendar("2025-03-04", "r214846");
     expect(capturedParams).not.toBeNull();
     expect((capturedParams as unknown as URLSearchParams).get("recipeSource")).toBe("CUSTOMER");
+  });
+});
+
+describe("Cookidoo collections", () => {
+  async function loggedInClient() {
+    const { fetchMock } = createMockFetch();
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: fetchMock },
+    );
+    await client.login();
+    return client;
+  }
+
+  const EXPECTED_MANAGED_COLLECTION = {
+    id: "col500561",
+    name: "Schneeweiss und Zuckersüss",
+    description: "Schneeweisse Delikatessen.",
+    chapters: [
+      {
+        name: "Schneeweiss und Zuckersüss",
+        recipes: [{ id: "r907016", name: "Mini-Pavlova mit Orangen", totalTime: 6600 }],
+      },
+    ],
+  };
+
+  const EXPECTED_CUSTOM_COLLECTION = {
+    id: "01JC1SRPRSW0SHE0AK8GCASABX",
+    name: "Testliste1",
+    description: null,
+    chapters: [{ name: "", recipes: [] }],
+  };
+
+  it("counts managed collections", async () => {
+    const client = await loggedInClient();
+    await expect(client.countManagedCollections()).resolves.toEqual({
+      totalElements: 1,
+      totalPages: 1,
+    });
+  });
+
+  it("gets managed collections", async () => {
+    const client = await loggedInClient();
+    const collections = await client.getManagedCollections();
+    expect(collections).toEqual([EXPECTED_MANAGED_COLLECTION]);
+  });
+
+  it("adds a managed collection", async () => {
+    const { fetchMock } = createMockFetch();
+    let capturedBody: unknown;
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/organize/de-TEST/api/managed-list" && init?.body) {
+        capturedBody = JSON.parse(init.body as string);
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    const collection = await client.addManagedCollection("col500561");
+    expect(collection).toEqual(EXPECTED_MANAGED_COLLECTION);
+    expect(capturedBody).toEqual({ collectionId: "col500561" });
+  });
+
+  it("removes a managed collection", async () => {
+    const client = await loggedInClient();
+    await expect(client.removeManagedCollection("col500561")).resolves.toBeUndefined();
+  });
+
+  it("counts custom collections", async () => {
+    const client = await loggedInClient();
+    await expect(client.countCustomCollections()).resolves.toEqual({
+      totalElements: 1,
+      totalPages: 1,
+    });
+  });
+
+  it("gets custom collections", async () => {
+    const client = await loggedInClient();
+    const collections = await client.getCustomCollections();
+    expect(collections).toEqual([EXPECTED_CUSTOM_COLLECTION]);
+  });
+
+  it("adds a custom collection", async () => {
+    const { fetchMock } = createMockFetch();
+    let capturedBody: unknown;
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/organize/de-TEST/api/custom-list" && init?.body) {
+        capturedBody = JSON.parse(init.body as string);
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    const collection = await client.addCustomCollection("Testliste1");
+    expect(collection).toEqual(EXPECTED_CUSTOM_COLLECTION);
+    expect(capturedBody).toEqual({ title: "Testliste1" });
+  });
+
+  it("removes a custom collection", async () => {
+    const client = await loggedInClient();
+    await expect(
+      client.removeCustomCollection("01JC1SRPRSW0SHE0AK8GCASABX"),
+    ).resolves.toBeUndefined();
+  });
+
+  it("adds recipes to a custom collection", async () => {
+    const { fetchMock } = createMockFetch();
+    let capturedBody: unknown;
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (
+        url.pathname === "/organize/de-TEST/api/custom-list/01JC1SRPRSW0SHE0AK8GCASABX" &&
+        init?.body
+      ) {
+        capturedBody = JSON.parse(init.body as string);
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    const collection = await client.addRecipesToCustomCollection(
+      "01JC1SRPRSW0SHE0AK8GCASABX",
+      ["r907015"],
+    );
+    expect(collection).toEqual({
+      ...EXPECTED_CUSTOM_COLLECTION,
+      chapters: [
+        { name: "", recipes: [{ id: "r907015", name: "Kokos Pralinen", totalTime: 32400 }] },
+      ],
+    });
+    expect(capturedBody).toEqual({ recipeIds: ["r907015"] });
+  });
+
+  it("removes a recipe from a custom collection", async () => {
+    const client = await loggedInClient();
+    const collection = await client.removeRecipeFromCustomCollection(
+      "01JC1SRPRSW0SHE0AK8GCASABX",
+      "r907015",
+    );
+    expect(collection).toEqual(EXPECTED_CUSTOM_COLLECTION);
   });
 });

@@ -214,3 +214,34 @@ export interface CalendarDayJSON {
   customerRecipes?: CalendarDayRecipeJSON[];
   customerRecipeIds?: string[];
 }
+
+export interface ChapterRecipeJSON {
+  id: string;
+  title: string;
+  /** Observed as a numeric-looking string in some responses -- coerced with `Number()` on the way out. */
+  totalTime: number | string;
+}
+
+export interface ChapterJSON {
+  title: string;
+  recipes: ChapterRecipeJSON[];
+}
+
+export interface CustomCollectionJSON {
+  id: string;
+  title: string;
+  description?: string;
+  chapters: ChapterJSON[];
+}
+
+export interface ManagedCollectionJSON {
+  id: string;
+  title: string;
+  description: string;
+  chapters: ChapterJSON[];
+}
+
+export interface PaginationJSON {
+  totalElements: number;
+  totalPages: number;
+}

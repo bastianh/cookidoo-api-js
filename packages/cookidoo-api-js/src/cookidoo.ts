@@ -6,9 +6,11 @@ import { readFileSync, writeFileSync } from "node:fs";
 import {
   CIAM_BASE_URL,
   CIAM_LOGIN_SRV_URL,
+  CUSTOM_COLLECTIONS_PATH_ACCEPT,
   CUSTOM_RECIPES_PATH_ACCEPT,
   DEFAULT_API_HEADERS,
   LOGIN_HEADERS,
+  MANAGED_COLLECTIONS_PATH_ACCEPT,
   OAUTH_SCOPE,
   OIDC_DISCOVERY_URL,
   TOKEN_EXPIRY_MARGIN_S,
@@ -22,6 +24,7 @@ import {
 import {
   cookidooAdditionalItemFromJson,
   cookidooCalendarDayFromJson,
+  cookidooCollectionFromJson,
   cookidooCustomRecipeFromJson,
   cookidooIngredientItemFromJson,
   cookidooRecipeDetailsFromJson,
@@ -35,9 +38,12 @@ import type {
   AdditionalItemJSON,
   CalendarDayJSON,
   CommunityProfileJSON,
+  CustomCollectionJSON,
   CustomRecipeJSON,
   CustomRecipesJSON,
   ItemJSON,
+  ManagedCollectionJSON,
+  PaginationJSON,
   RecipeDetailsJSON,
   RecipeJSON,
   SearchResultJSON,
@@ -47,6 +53,8 @@ import {
   type CookidooAdditionalItem,
   type CookidooAuthData,
   type CookidooCalendarDay,
+  type CookidooCollection,
+  type CookidooCollectionsCount,
   type CookidooConfig,
   type CookidooCustomRecipe,
   type CookidooIngredientItem,
@@ -642,6 +650,151 @@ export class Cookidoo {
     if (data.content == null) return Cookidoo.emptyCalendarDay(day);
     return Cookidoo.parseResult("loading custom removed recipe", () =>
       cookidooCalendarDayFromJson(data.content as CalendarDayJSON, this.cfg.localization),
+    );
+  }
+
+  /** Count the signed-in user's managed (Vorwerk-curated) collections. */
+  async countManagedCollections(): Promise<CookidooCollectionsCount> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("organize:api-managed-list");
+    const result = await this.requestJson("GET", url, "loading managed collections", {
+      headers: { ACCEPT: MANAGED_COLLECTIONS_PATH_ACCEPT },
+    });
+    const data = Cookidoo.ensureMapping(result, "loading managed collections");
+    return Cookidoo.parseResult("loading managed collections", () => {
+      const page = data.page as PaginationJSON;
+      return { totalElements: page.totalElements, totalPages: page.totalPages };
+    });
+  }
+
+  /**
+   * Get the signed-in user's managed (Vorwerk-curated) collections.
+   *
+   * @param page The page to fetch (0-based).
+   */
+  async getManagedCollections(page = 0): Promise<CookidooCollection[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("organize:api-managed-list");
+    const result = await this.requestJson("GET", url, "loading managed collections", {
+      params: { page: String(page) },
+      headers: { ACCEPT: MANAGED_COLLECTIONS_PATH_ACCEPT },
+    });
+    const data = Cookidoo.ensureMapping(result, "loading managed collections");
+    return Cookidoo.parseResult("loading managed collections", () =>
+      (data.managedlists as ManagedCollectionJSON[]).map((item) => cookidooCollectionFromJson(item)),
+    );
+  }
+
+  /** Add a managed collection to the signed-in user's collections. */
+  async addManagedCollection(managedCollectionId: string): Promise<CookidooCollection> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("organize:api-managed-list");
+    const result = await this.requestJson("POST", url, "add managed collection", {
+      json: { collectionId: managedCollectionId },
+      headers: { ACCEPT: MANAGED_COLLECTIONS_PATH_ACCEPT },
+    });
+    const data = Cookidoo.ensureMapping(result, "add managed collection");
+    return Cookidoo.parseResult("loading added managed collection", () =>
+      cookidooCollectionFromJson(data.content as ManagedCollectionJSON),
+    );
+  }
+
+  /** Remove a managed collection from the signed-in user's collections. */
+  async removeManagedCollection(managedCollectionId: string): Promise<void> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("organize:api-managed-list-single", { id: managedCollectionId });
+    await this.requestJson("DELETE", url, "remove managed collection", {
+      headers: { ACCEPT: MANAGED_COLLECTIONS_PATH_ACCEPT },
+      parseResponse: false,
+    });
+  }
+
+  /** Count the signed-in user's custom (self-created) collections. */
+  async countCustomCollections(): Promise<CookidooCollectionsCount> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("organize:api-custom-list");
+    const result = await this.requestJson("GET", url, "loading custom collections", {
+      headers: { ACCEPT: CUSTOM_COLLECTIONS_PATH_ACCEPT },
+    });
+    const data = Cookidoo.ensureMapping(result, "loading custom collections");
+    return Cookidoo.parseResult("loading custom collections", () => {
+      const page = data.page as PaginationJSON;
+      return { totalElements: page.totalElements, totalPages: page.totalPages };
+    });
+  }
+
+  /**
+   * Get the signed-in user's custom (self-created) collections.
+   *
+   * @param page The page to fetch (0-based).
+   */
+  async getCustomCollections(page = 0): Promise<CookidooCollection[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("organize:api-custom-list");
+    const result = await this.requestJson("GET", url, "loading custom collections", {
+      params: { page: String(page) },
+      headers: { ACCEPT: CUSTOM_COLLECTIONS_PATH_ACCEPT },
+    });
+    const data = Cookidoo.ensureMapping(result, "loading custom collections");
+    return Cookidoo.parseResult("loading custom collections", () =>
+      (data.customlists as CustomCollectionJSON[]).map((item) => cookidooCollectionFromJson(item)),
+    );
+  }
+
+  /** Create a new, empty custom collection. */
+  async addCustomCollection(name: string): Promise<CookidooCollection> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("organize:api-custom-list");
+    const result = await this.requestJson("POST", url, "add custom collection", {
+      json: { title: name },
+      headers: { ACCEPT: CUSTOM_COLLECTIONS_PATH_ACCEPT },
+    });
+    const data = Cookidoo.ensureMapping(result, "add custom collection");
+    return Cookidoo.parseResult("loading added custom collection", () =>
+      cookidooCollectionFromJson(data.content as CustomCollectionJSON),
+    );
+  }
+
+  /** Remove a custom collection. */
+  async removeCustomCollection(customCollectionId: string): Promise<void> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("organize:api-custom-list-modify", { id: customCollectionId });
+    await this.requestJson("DELETE", url, "remove custom collection", {
+      headers: { ACCEPT: CUSTOM_COLLECTIONS_PATH_ACCEPT },
+      parseResponse: false,
+    });
+  }
+
+  /** Add recipes to a custom collection. */
+  async addRecipesToCustomCollection(
+    customCollectionId: string,
+    recipeIds: string[],
+  ): Promise<CookidooCollection> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("organize:api-custom-list-modify", { id: customCollectionId });
+    const result = await this.requestJson("PUT", url, "add recipes to custom collection", {
+      json: { recipeIds },
+    });
+    const data = Cookidoo.ensureMapping(result, "add recipes to custom collection");
+    return Cookidoo.parseResult("loading added recipes", () =>
+      cookidooCollectionFromJson(data.content as CustomCollectionJSON),
+    );
+  }
+
+  /** Remove a recipe from a custom collection. */
+  async removeRecipeFromCustomCollection(
+    customCollectionId: string,
+    recipeId: string,
+  ): Promise<CookidooCollection> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("organize:api-custom-list-recipe", {
+      id: customCollectionId,
+      recipe: recipeId,
+    });
+    const result = await this.requestJson("DELETE", url, "remove recipe from custom collection");
+    const data = Cookidoo.ensureMapping(result, "remove recipe from custom collection");
+    return Cookidoo.parseResult("loading removed recipe", () =>
+      cookidooCollectionFromJson(data.content as CustomCollectionJSON),
     );
   }
 

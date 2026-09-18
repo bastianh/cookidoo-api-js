@@ -101,9 +101,26 @@ await cookidoo.addCustomRecipesToCalendar(today, [copy.id]);
 
 `day` is always an ISO-8601 `YYYY-MM-DD` string, never a `Date` -- that's what actually goes into the request either way, and it sidesteps `Date`'s own timezone footguns for a date-only value.
 
+Collections:
+
+```ts
+const managed = await cookidoo.getManagedCollections(); // Vorwerk-curated
+const custom = await cookidoo.getCustomCollections(); // self-created
+
+const { totalElements, totalPages } = await cookidoo.countCustomCollections();
+
+const list = await cookidoo.addCustomCollection("Weeknight dinners");
+await cookidoo.addRecipesToCustomCollection(list.id, [results.recipes[0].id]);
+await cookidoo.removeRecipeFromCustomCollection(list.id, results.recipes[0].id);
+await cookidoo.removeCustomCollection(list.id);
+
+await cookidoo.addManagedCollection(managed[0].id);
+await cookidoo.removeManagedCollection(managed[0].id);
+```
+
 ## Status
 
-Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items — get/add/remove/edit-ownership, including custom recipes, plus clearing the whole list), recipes (`searchRecipes`, `getRecipeDetails`), custom recipes (`getCustomRecipe`, `listCustomRecipes`, `addCustomRecipeFrom`, `removeCustomRecipe`), and the calendar (`getRecipesInCalendarWeek`, `add/removeRecipesToCalendar`, plus the custom-recipe equivalents). More of the Python client's surface (collections, device/remote-monitoring) is ported incrementally.
+Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items — get/add/remove/edit-ownership, including custom recipes, plus clearing the whole list), recipes (`searchRecipes`, `getRecipeDetails`), custom recipes (`getCustomRecipe`, `listCustomRecipes`, `addCustomRecipeFrom`, `removeCustomRecipe`), the calendar (`getRecipesInCalendarWeek`, `add/removeRecipesToCalendar`, plus the custom-recipe equivalents), and collections (`count/get/add/removeManagedCollection(s)`, `count/get/add/removeCustomCollection(s)`, `add/removeRecipeFromCustomCollection`). More of the Python client's surface (device/remote-monitoring) is ported incrementally.
 
 ## Exceptions
 

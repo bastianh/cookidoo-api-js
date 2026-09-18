@@ -13,7 +13,7 @@ The developers of this project are in no way endorsed by or affiliated with Cook
 
 ## Status
 
-This is an early, incremental port. It currently covers the OAuth2/PKCE login flow, access-token refresh, token persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items, clearing the list), recipes (search, full details), custom recipes (get, list, add-from, remove), and the calendar (get a week, add/remove recipes, including custom ones). Further endpoints (collections, device/remote-monitoring, ...) are ported incrementally from the [Python client](https://github.com/miaucl/cookidoo-api).
+This is an early, incremental port. It currently covers the OAuth2/PKCE login flow, access-token refresh, token persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items, clearing the list), recipes (search, full details), custom recipes (get, list, add-from, remove), the calendar (get a week, add/remove recipes, including custom ones), and collections (managed and custom: count/get/add/remove, plus add/remove-recipe on custom collections). Further endpoints (device/remote-monitoring, ...) are ported incrementally from the [Python client](https://github.com/miaucl/cookidoo-api).
 
 ## Dev setup
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   cookidooAdditionalItemFromJson,
   cookidooCalendarDayFromJson,
+  cookidooCollectionFromJson,
   cookidooCustomRecipeFromJson,
   cookidooIngredientFromJson,
   cookidooIngredientItemFromJson,
@@ -519,6 +520,45 @@ describe("cookidooCalendarDayFromJson", () => {
       recipes: [],
     });
     expect(day.customerRecipeIds).toEqual([]);
+  });
+});
+
+describe("cookidooCollectionFromJson", () => {
+  it("maps a managed collection, coercing numeric-string totalTime in chapter recipes", () => {
+    const collection = cookidooCollectionFromJson({
+      id: "col500561",
+      title: "Schneeweiss und Zuckersüss",
+      description: "Schneeweisse Delikatessen.",
+      chapters: [
+        {
+          title: "Schneeweiss und Zuckersüss",
+          recipes: [
+            { id: "r907016", title: "Mini-Pavlova mit Orangen", type: "VORWERK", totalTime: "6600.0" },
+          ],
+        },
+      ],
+    });
+    expect(collection).toEqual({
+      id: "col500561",
+      name: "Schneeweiss und Zuckersüss",
+      description: "Schneeweisse Delikatessen.",
+      chapters: [
+        {
+          name: "Schneeweiss und Zuckersüss",
+          recipes: [{ id: "r907016", name: "Mini-Pavlova mit Orangen", totalTime: 6600 }],
+        },
+      ],
+    });
+  });
+
+  it("defaults description to null when absent (custom collections)", () => {
+    const collection = cookidooCollectionFromJson({
+      id: "01JC1SRPRSW0SHE0AK8GCASABX",
+      title: "Testliste1",
+      chapters: [{ title: "", recipes: [] }],
+    });
+    expect(collection.description).toBeNull();
+    expect(collection.chapters).toEqual([{ name: "", recipes: [] }]);
   });
 });
 

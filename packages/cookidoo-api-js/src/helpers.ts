@@ -5,12 +5,16 @@ import type {
   AdditionalItemJSON,
   CalendarDayJSON,
   CalendarDayRecipeJSON,
+  ChapterJSON,
+  ChapterRecipeJSON,
   CommunityProfileJSON,
+  CustomCollectionJSON,
   CustomRecipeJSON,
   CustomRecipeTextJSON,
   DescriptiveAssetJSON,
   IngredientJSON,
   ItemJSON,
+  ManagedCollectionJSON,
   QuantityJSON,
   RecipeDetailsJSON,
   RecipeJSON,
@@ -20,6 +24,9 @@ import type {
   CookidooAdditionalItem,
   CookidooCalendarDay,
   CookidooCalendarDayRecipe,
+  CookidooChapter,
+  CookidooChapterRecipe,
+  CookidooCollection,
   CookidooCustomRecipe,
   CookidooIngredient,
   CookidooLocalizationConfig,
@@ -339,6 +346,34 @@ export function cookidooCalendarDayFromJson(
     title: calendarDay.title,
     recipes: [...regular, ...custom],
     customerRecipeIds: [...(calendarDay.customerRecipeIds ?? [])],
+  };
+}
+
+function cookidooChapterRecipeFromJson(recipe: ChapterRecipeJSON): CookidooChapterRecipe {
+  return {
+    id: recipe.id,
+    name: recipe.title,
+    // Observed as a numeric-looking string in some live responses.
+    totalTime: Number(recipe.totalTime),
+  };
+}
+
+function cookidooChapterFromJson(chapter: ChapterJSON): CookidooChapter {
+  return {
+    name: chapter.title,
+    recipes: chapter.recipes.map(cookidooChapterRecipeFromJson),
+  };
+}
+
+/** Convert a managed or custom collection received from the API to a Cookidoo collection. */
+export function cookidooCollectionFromJson(
+  collection: CustomCollectionJSON | ManagedCollectionJSON,
+): CookidooCollection {
+  return {
+    id: collection.id,
+    name: collection.title,
+    description: collection.description ?? null,
+    chapters: collection.chapters.map(cookidooChapterFromJson),
   };
 }
 

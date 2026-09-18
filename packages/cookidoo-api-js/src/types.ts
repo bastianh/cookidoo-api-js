@@ -261,3 +261,31 @@ export interface CookidooCalendarDay {
   /** IDs of custom recipes planned for the day, when returned by the API. */
   customerRecipeIds: string[];
 }
+
+/** A recipe within a {@link CookidooChapter}. Unlike other recipe summaries, the API doesn't include images here. */
+export interface CookidooChapterRecipe {
+  id: string;
+  name: string;
+  totalTime: number;
+}
+
+/** A named group of recipes within a {@link CookidooCollection}. */
+export interface CookidooChapter {
+  name: string;
+  recipes: CookidooChapterRecipe[];
+}
+
+/** A managed (Vorwerk-curated) or custom (user-created) recipe collection. */
+export interface CookidooCollection {
+  id: string;
+  name: string;
+  /** `null` for custom collections, which don't have one. */
+  description: string | null;
+  chapters: CookidooChapter[];
+}
+
+/** The total element/page count of a paginated collections listing. */
+export interface CookidooCollectionsCount {
+  totalElements: number;
+  totalPages: number;
+}

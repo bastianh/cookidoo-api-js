@@ -65,3 +65,15 @@ export const RECIPES_IN_CALENDAR_WEEK_PATH = "planning/{language}/api/my-week/{d
 export const ADD_RECIPES_TO_CALENDAR_PATH = "planning/{language}/api/my-day";
 export const REMOVE_RECIPE_FROM_CALENDAR_PATH =
   "planning/{language}/api/my-day/{day}/recipes/{recipe}";
+
+export const MANAGED_COLLECTIONS_PATH = "organize/{language}/api/managed-list";
+export const MANAGED_COLLECTIONS_PATH_ACCEPT =
+  "application/vnd.vorwerk.organize.managed-list.mobile+json";
+export const REMOVE_MANAGED_COLLECTION_PATH = "organize/{language}/api/managed-list/{id}";
+
+export const CUSTOM_COLLECTIONS_PATH = "organize/{language}/api/custom-list";
+export const CUSTOM_COLLECTIONS_PATH_ACCEPT =
+  "application/vnd.vorwerk.organize.custom-list.mobile+json";
+export const REMOVE_CUSTOM_COLLECTION_PATH = "organize/{language}/api/custom-list/{id}";
+export const REMOVE_RECIPE_FROM_CUSTOM_COLLECTION_PATH =
+  "organize/{language}/api/custom-list/{id}/recipes/{recipe}";
