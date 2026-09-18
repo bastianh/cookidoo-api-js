@@ -8,6 +8,7 @@ import type {
   ChapterJSON,
   ChapterRecipeJSON,
   CommunityProfileJSON,
+  CookingHistoryEntryJSON,
   CustomCollectionJSON,
   CustomRecipeJSON,
   CustomRecipeTextJSON,
@@ -29,6 +30,7 @@ import type {
   CookidooChapterRecipe,
   CookidooCollection,
   CookidooCookingActivity,
+  CookidooCookingHistoryEntry,
   CookidooCustomRecipe,
   CookidooDevice,
   CookidooIngredient,
@@ -499,6 +501,40 @@ export function cookidooCookingActivityFromPush(
     messageCriticality: (first("messageCriticality") as string | null) ?? null,
     completedAt,
     staleAt: pushTimestamp(first("staleDate", "staleTimestamp")),
+  };
+}
+
+/** Convert a cooking history entry received from the API to a Cookidoo cooking history entry. */
+export function cookidooCookingHistoryEntryFromJson(
+  entry: CookingHistoryEntryJSON,
+  localization?: CookidooLocalizationConfig,
+): CookidooCookingHistoryEntry {
+  const { recipe } = entry;
+  const images = recipe.assets?.images;
+  const [thumbnail, image] = images
+    ? extractImagesFromDescriptiveAssets([images])
+    : [null, null];
+
+  // The service reports the duration as a stringified float of seconds
+  // (e.g. "5100.0"), unlike the planning endpoints' plain int.
+  const parsedTotalTime = Number(recipe.totalTime);
+  const totalTime = Number.isNaN(parsedTotalTime) ? 0 : Math.trunc(parsedTotalTime);
+
+  const cookedAt = pushTimestamp(entry.details.timestamp);
+  if (cookedAt === null) {
+    throw new Error(
+      `Cooking history entry for recipe ${recipe.id} has an unparsable timestamp: '${entry.details.timestamp}'.`,
+    );
+  }
+
+  return {
+    id: recipe.id,
+    name: recipe.title,
+    cookedAt,
+    totalTime,
+    thumbnail,
+    image,
+    url: constructRecipeUrl(localization, recipe.id),
   };
 }
 

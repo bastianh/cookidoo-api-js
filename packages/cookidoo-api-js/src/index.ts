@@ -31,6 +31,7 @@ export {
   type CookidooCollectionsCount,
   type CookidooConfig,
   type CookidooCookingActivity,
+  type CookidooCookingHistoryEntry,
   type CookidooCustomRecipe,
   type CookidooDevice,
   type CookidooIngredient,

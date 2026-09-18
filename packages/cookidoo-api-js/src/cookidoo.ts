@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import {
   CIAM_BASE_URL,
   CIAM_LOGIN_SRV_URL,
+  COOKING_HISTORY_PATH_ACCEPT,
   CUSTOM_COLLECTIONS_PATH_ACCEPT,
   CUSTOM_RECIPES_PATH_ACCEPT,
   DEFAULT_API_HEADERS,
@@ -34,6 +35,7 @@ import {
   cookidooAdditionalItemFromJson,
   cookidooCalendarDayFromJson,
   cookidooCollectionFromJson,
+  cookidooCookingHistoryEntryFromJson,
   cookidooCustomRecipeFromJson,
   cookidooDeviceFromJson,
   cookidooIngredientItemFromJson,
@@ -48,6 +50,7 @@ import type {
   AdditionalItemJSON,
   CalendarDayJSON,
   CommunityProfileJSON,
+  CookingHistoryEntryJSON,
   CustomCollectionJSON,
   CustomRecipeJSON,
   CustomRecipesJSON,
@@ -66,6 +69,7 @@ import {
   type CookidooCollection,
   type CookidooCollectionsCount,
   type CookidooConfig,
+  type CookidooCookingHistoryEntry,
   type CookidooCustomRecipe,
   type CookidooDevice,
   type CookidooIngredientItem,
@@ -663,6 +667,26 @@ export class Cookidoo {
     if (data.content == null) return Cookidoo.emptyCalendarDay(day);
     return Cookidoo.parseResult("loading custom removed recipe", () =>
       cookidooCalendarDayFromJson(data.content as CalendarDayJSON, this.cfg.localization),
+    );
+  }
+
+  /**
+   * Get the cooking history ("last cooked") of the account.
+   *
+   * The service returns the whole history in a single response, newest
+   * entry first; it accepts no pagination parameters.
+   */
+  async getCookingHistory(): Promise<CookidooCookingHistoryEntry[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("organize:api-cooking-history");
+    const result = await this.requestJson("GET", url, "loading cooking history", {
+      headers: { ACCEPT: COOKING_HISTORY_PATH_ACCEPT },
+    });
+    const data = Cookidoo.ensureMapping(result, "loading cooking history");
+    return Cookidoo.parseResult("loading cooking history", () =>
+      (data.entries as CookingHistoryEntryJSON[]).map((entry) =>
+        cookidooCookingHistoryEntryFromJson(entry, this.cfg.localization),
+      ),
     );
   }
 
