@@ -1,0 +1,63 @@
+<script type="text/javascript">
+  RED.nodes.registerType("cookidoo-collections", {
+    category: "cookidoo",
+    color: "#f2c12e",
+    defaults: {
+      name: { value: "" },
+      cookidoo: { value: "", type: "cookidoo-config", required: true },
+      operation: { value: "get-managed", required: true },
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-folder-open",
+    label: function () {
+      return this.name || `collections: ${this.operation}`;
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="cookidoo-collections">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-cookidoo"><i class="fa fa-cog"></i> Cookidoo</label>
+    <input type="text" id="node-input-cookidoo" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-operation"><i class="fa fa-wrench"></i> Operation</label>
+    <select id="node-input-operation" style="width:70%">
+      <option value="count-managed">count managed collections</option>
+      <option value="get-managed">get managed collections</option>
+      <option value="add-managed">add managed collection</option>
+      <option value="remove-managed">remove managed collection</option>
+      <option value="count-custom">count custom collections</option>
+      <option value="get-custom">get custom collections</option>
+      <option value="add-custom">add custom collection</option>
+      <option value="remove-custom">remove custom collection</option>
+      <option value="add-recipes">add recipes to custom collection</option>
+      <option value="remove-recipe">remove recipe from custom collection</option>
+    </select>
+  </div>
+  <div class="form-tips">
+    Overridable per message with <code>msg.operation</code>. See the node's help for the expected <code>msg.payload</code> per operation.
+  </div>
+</script>
+
+<script type="text/html" data-help-name="cookidoo-collections">
+  <p>CRUD operations on the signed-in user's managed (Vorwerk-curated) and custom (self-created) recipe collections. The operation can be set here or overridden per message with <code>msg.operation</code>.</p>
+  <table class="cookidoo-op-table" style="width:100%">
+    <tr><th align="left">Operation</th><th align="left"><code>msg.payload</code> in</th><th align="left"><code>msg.payload</code> out</th></tr>
+    <tr><td><code>count-managed</code></td><td>-</td><td><code>{ totalElements, totalPages }</code></td></tr>
+    <tr><td><code>get-managed</code></td><td>page number (<code>number</code>, optional, default 0)</td><td><code>CookidooCollection[]</code></td></tr>
+    <tr><td><code>add-managed</code></td><td>managed collection id (<code>string</code>)</td><td>the added <code>CookidooCollection</code></td></tr>
+    <tr><td><code>remove-managed</code></td><td>managed collection id (<code>string</code>)</td><td>-</td></tr>
+    <tr><td><code>count-custom</code></td><td>-</td><td><code>{ totalElements, totalPages }</code></td></tr>
+    <tr><td><code>get-custom</code></td><td>page number (<code>number</code>, optional, default 0)</td><td><code>CookidooCollection[]</code></td></tr>
+    <tr><td><code>add-custom</code></td><td>collection name (<code>string</code>)</td><td>the new <code>CookidooCollection</code></td></tr>
+    <tr><td><code>remove-custom</code></td><td>custom collection id (<code>string</code>)</td><td>-</td></tr>
+    <tr><td><code>add-recipes</code></td><td><code>{ collectionId, recipeIds }</code></td><td>the changed <code>CookidooCollection</code></td></tr>
+    <tr><td><code>remove-recipe</code></td><td><code>{ collectionId, recipeId }</code></td><td>the changed <code>CookidooCollection</code></td></tr>
+  </table>
+</script>
