@@ -447,6 +447,50 @@ function parseCookState(raw: unknown): CookidooCookState {
   return upper as CookidooCookState;
 }
 
+/** Keys the app's push service also accepts the cook-state fields nested under. */
+const PUSH_NESTED_PAYLOAD_KEYS = ["cookingActivity", "remoteMonitoringInfo"] as const;
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Return the cook-state mapping nested under one of the known payload keys. */
+function nestedCookStatePayload(data: Record<string, unknown>): Record<string, unknown> | null {
+  for (const key of PUSH_NESTED_PAYLOAD_KEYS) {
+    const value = data[key];
+    if (isPlainObject(value)) return value;
+    if (typeof value === "string") {
+      try {
+        const parsed: unknown = JSON.parse(value);
+        return isPlainObject(parsed) ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Extract the cook-state mapping from a Firebase data message.
+ *
+ * The appliance flattens the cook fields into the data map, but the app's
+ * push service also accepts them nested under `cookingActivity` /
+ * `remoteMonitoringInfo` (as an object or as a JSON-encoded string), so all
+ * three shapes are accepted here and normalized to the flat one
+ * {@link cookidooCookingActivityFromPush} expects.
+ *
+ * Returns `null` if the message carries no recognizable cook state (e.g. an
+ * unrelated FCM data message).
+ */
+export function cookidooCookStatePayload(message: unknown): Record<string, unknown> | null {
+  if (!isPlainObject(message)) return null;
+  const data = "data" in message ? message.data : message;
+  if (!isPlainObject(data)) return null;
+  if ("deviceId" in data) return data;
+  return nestedCookStatePayload(data);
+}
+
 /**
  * Convert a remote-monitoring push payload into a cooking activity.
  *
@@ -454,7 +498,9 @@ function parseCookState(raw: unknown): CookidooCookState {
  * message) rather than as an HTTP response, so consumers receive it via
  * their own push channel and decode it here. Both the on-the-wire field
  * names (`leadingText`/`trailingText`/`completedDate`/`staleDate`/...) and
- * the app's parsed names are accepted.
+ * the app's parsed names are accepted. The payload must already be flat --
+ * run it through {@link cookidooCookStatePayload} first if it might be
+ * nested under `cookingActivity`/`remoteMonitoringInfo`.
  */
 export function cookidooCookingActivityFromPush(
   data: Record<string, unknown>,

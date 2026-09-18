@@ -5,6 +5,7 @@ import {
   cookidooCalendarDayFromJson,
   cookidooCollectionFromJson,
   cookidooCookingActivityFromPush,
+  cookidooCookStatePayload,
   cookidooCookingHistoryEntryFromJson,
   cookidooCustomRecipeFromJson,
   cookidooDeviceFromJson,
@@ -574,6 +575,28 @@ describe("cookidooDeviceFromJson", () => {
 
   it("throws on an unrecognized machine type", () => {
     expect(() => cookidooDeviceFromJson("TM99")).toThrow();
+  });
+});
+
+describe("cookidooCookStatePayload", () => {
+  const FLAT_PAYLOAD: Record<string, unknown> = { deviceId: "dev-1", state: "running" };
+
+  it.each([
+    ["flattened", FLAT_PAYLOAD],
+    ["under-data", { data: FLAT_PAYLOAD }],
+    ["nested-object", { data: { cookingActivity: FLAT_PAYLOAD } }],
+    ["nested-json-string", { data: { remoteMonitoringInfo: JSON.stringify(FLAT_PAYLOAD) } }],
+  ] as const)("accepts the %s shape", (_label, message) => {
+    expect(cookidooCookStatePayload(message)).toEqual(FLAT_PAYLOAD);
+  });
+
+  it.each([
+    ["not-a-dict", "not-a-mapping"],
+    ["data-not-a-dict", { data: "not-a-mapping" }],
+    ["no-cook-state", { data: { unrelated: "message" } }],
+    ["undecodable-json", { data: { cookingActivity: "{not json" } }],
+  ] as const)("returns null for the %s shape", (_label, message) => {
+    expect(cookidooCookStatePayload(message)).toBeNull();
   });
 });
 
