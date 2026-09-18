@@ -1,0 +1,31 @@
+<script type="text/javascript">
+  RED.nodes.registerType("cookidoo-get-cooking-history", {
+    category: "cookidoo",
+    color: "#f2c12e",
+    defaults: {
+      name: { value: "" },
+      cookidoo: { value: "", type: "cookidoo-config", required: true },
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-history",
+    label: function () {
+      return this.name || "get cooking history";
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="cookidoo-get-cooking-history">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-cookidoo"><i class="fa fa-cog"></i> Cookidoo</label>
+    <input type="text" id="node-input-cookidoo" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="cookidoo-get-cooking-history">
+  <p>Fetches the signed-in user's cooking history ("last cooked") on every input message and sets it as <code>msg.payload</code> -- a <code>CookidooCookingHistoryEntry[]</code>, newest-cooked first. The service returns the whole history in one response; it takes no pagination parameters.</p>
+</script>
