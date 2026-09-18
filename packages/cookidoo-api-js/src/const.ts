@@ -56,3 +56,7 @@ export const REMOVE_ADDITIONAL_ITEMS_PATH = "shopping/{language}/additional-item
 
 export const RECIPE_PATH = "recipes/recipe/{language}/{id}";
 export const SEARCH_PATH = "search/{locale}";
+
+export const CUSTOM_RECIPES_PATH = "created-recipes/{language}";
+export const CUSTOM_RECIPES_PATH_ACCEPT = "application/vnd.vorwerk.customer-recipe.full+json";
+export const CUSTOM_RECIPE_PATH = "created-recipes/{language}/{id}";

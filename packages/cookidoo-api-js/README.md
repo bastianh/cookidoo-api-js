@@ -74,9 +74,20 @@ const details = await cookidoo.getRecipeDetails(results.recipes[0].id);
 console.log(details.ingredients, details.stepGroups, details.nutritionGroups);
 ```
 
+Custom recipes:
+
+```ts
+const mine = await cookidoo.listCustomRecipes();
+
+// Copy an official recipe as a custom one, at a different serving size
+const copy = await cookidoo.addCustomRecipeFrom(results.recipes[0].id, 4);
+
+await cookidoo.removeCustomRecipe(copy.id);
+```
+
 ## Status
 
-Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items — get/add/remove/edit-ownership, including custom recipes, plus clearing the whole list), and recipes (`searchRecipes`, `getRecipeDetails`). More of the Python client's surface (custom recipes, calendar, collections, device/remote-monitoring) is ported incrementally.
+Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items — get/add/remove/edit-ownership, including custom recipes, plus clearing the whole list), recipes (`searchRecipes`, `getRecipeDetails`), and custom recipes (`getCustomRecipe`, `listCustomRecipes`, `addCustomRecipeFrom`, `removeCustomRecipe`). More of the Python client's surface (calendar, collections, device/remote-monitoring) is ported incrementally.
 
 ## Exceptions
 

@@ -220,3 +220,20 @@ export interface CookidooShoppingRecipeDetails extends CookidooShoppingRecipe {
   nutritionGroups: CookidooNutritionGroup[];
   stepGroups: CookidooRecipeStepGroup[];
 }
+
+/** A recipe created (or copied from an official recipe) by the signed-in user. */
+export interface CookidooCustomRecipe {
+  id: string;
+  name: string;
+  ingredients: string[];
+  instructions: string[];
+  tools: string[];
+  servingSize: number;
+  /** In seconds. */
+  activeTime: number;
+  /** In seconds. */
+  totalTime: number;
+  thumbnail: string | null;
+  image: string | null;
+  url: string;
+}

@@ -19,6 +19,8 @@ import {
   ADD_ADDITIONAL_ITEMS_PATH,
   ADD_INGREDIENT_ITEMS_FOR_RECIPES_PATH,
   COMMUNITY_PROFILE_PATH,
+  CUSTOM_RECIPE_PATH,
+  CUSTOM_RECIPES_PATH,
   DEFAULT_API_HEADERS,
   EDIT_ADDITIONAL_ITEMS_PATH,
   EDIT_OWNERSHIP_ADDITIONAL_ITEMS_PATH,
@@ -59,6 +61,8 @@ export const ENDPOINT_RELS: Readonly<Record<string, readonly [string, string]>> 
   "pantry:remove-additional-items": ["shopping", REMOVE_ADDITIONAL_ITEMS_PATH],
   "recipe:details": ["recipes/recipe", RECIPE_PATH],
   "search:home": ["search", SEARCH_PATH],
+  "customer-recipes:recipe-create": ["created-recipes", CUSTOM_RECIPES_PATH],
+  "customer-recipes:recipe-details": ["created-recipes", CUSTOM_RECIPE_PATH],
 };
 
 const DOMAIN_PREFIX_RE = /^https?:\/\/[^/]+/;
