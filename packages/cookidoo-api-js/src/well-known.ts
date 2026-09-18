@@ -20,6 +20,7 @@ import {
   ADD_INGREDIENT_ITEMS_FOR_RECIPES_PATH,
   ADD_RECIPES_TO_CALENDAR_PATH,
   COMMUNITY_PROFILE_PATH,
+  CUSTOM_COLLECTIONS_PATH,
   CUSTOM_RECIPE_PATH,
   CUSTOM_RECIPES_PATH,
   DEFAULT_API_HEADERS,
@@ -27,11 +28,15 @@ import {
   EDIT_OWNERSHIP_ADDITIONAL_ITEMS_PATH,
   EDIT_OWNERSHIP_INGREDIENT_ITEMS_PATH,
   LOGIN_HEADERS,
+  MANAGED_COLLECTIONS_PATH,
   RECIPE_PATH,
   RECIPES_IN_CALENDAR_WEEK_PATH,
   REMOVE_ADDITIONAL_ITEMS_PATH,
+  REMOVE_CUSTOM_COLLECTION_PATH,
   REMOVE_INGREDIENT_ITEMS_FOR_RECIPES_PATH,
+  REMOVE_MANAGED_COLLECTION_PATH,
   REMOVE_RECIPE_FROM_CALENDAR_PATH,
+  REMOVE_RECIPE_FROM_CUSTOM_COLLECTION_PATH,
   SEARCH_PATH,
   SHOPPING_LIST_RECIPES_PATH,
 } from "./const.js";
@@ -69,6 +74,11 @@ export const ENDPOINT_RELS: Readonly<Record<string, readonly [string, string]>> 
   "planning:api-my-week-from-date": ["planning", RECIPES_IN_CALENDAR_WEEK_PATH],
   "planning:api-my-day": ["planning", ADD_RECIPES_TO_CALENDAR_PATH],
   "planning:api-my-day-recipes": ["planning", REMOVE_RECIPE_FROM_CALENDAR_PATH],
+  "organize:api-managed-list": ["organize", MANAGED_COLLECTIONS_PATH],
+  "organize:api-managed-list-single": ["organize", REMOVE_MANAGED_COLLECTION_PATH],
+  "organize:api-custom-list": ["organize", CUSTOM_COLLECTIONS_PATH],
+  "organize:api-custom-list-modify": ["organize", REMOVE_CUSTOM_COLLECTION_PATH],
+  "organize:api-custom-list-recipe": ["organize", REMOVE_RECIPE_FROM_CUSTOM_COLLECTION_PATH],
 };
 
 const DOMAIN_PREFIX_RE = /^https?:\/\/[^/]+/;
