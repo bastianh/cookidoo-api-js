@@ -16,7 +16,8 @@
       "cookidoo-get-recipe-details": "nodes/cookidoo-get-recipe-details.js",
       "cookidoo-custom-recipes": "nodes/cookidoo-custom-recipes.js",
       "cookidoo-calendar": "nodes/cookidoo-calendar.js",
-      "cookidoo-collections": "nodes/cookidoo-collections.js"
+      "cookidoo-collections": "nodes/cookidoo-collections.js",
+      "cookidoo-devices": "nodes/cookidoo-devices.js"
     }
   },
   "dependencies": {
