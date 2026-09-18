@@ -1,0 +1,53 @@
+<script type="text/javascript">
+  RED.nodes.registerType("cookidoo-calendar", {
+    category: "cookidoo",
+    color: "#f2c12e",
+    defaults: {
+      name: { value: "" },
+      cookidoo: { value: "", type: "cookidoo-config", required: true },
+      operation: { value: "get-week", required: true },
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-calendar",
+    label: function () {
+      return this.name || `calendar: ${this.operation}`;
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="cookidoo-calendar">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-cookidoo"><i class="fa fa-cog"></i> Cookidoo</label>
+    <input type="text" id="node-input-cookidoo" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-operation"><i class="fa fa-wrench"></i> Operation</label>
+    <select id="node-input-operation" style="width:70%">
+      <option value="get-week">get recipes in calendar week</option>
+      <option value="add-recipes">add recipes to a day</option>
+      <option value="remove-recipe">remove recipe from a day</option>
+      <option value="add-custom-recipes">add custom recipes to a day</option>
+      <option value="remove-custom-recipe">remove custom recipe from a day</option>
+    </select>
+  </div>
+  <div class="form-tips">
+    Overridable per message with <code>msg.operation</code>. See the node's help for the expected <code>msg.payload</code> per operation.
+  </div>
+</script>
+
+<script type="text/html" data-help-name="cookidoo-calendar">
+  <p>Operations on the recipe-planning calendar. The operation can be set here or overridden per message with <code>msg.operation</code>. A <code>day</code> is always an ISO-8601 <code>YYYY-MM-DD</code> string.</p>
+  <table class="cookidoo-op-table" style="width:100%">
+    <tr><th align="left">Operation</th><th align="left"><code>msg.payload</code> in</th><th align="left"><code>msg.payload</code> out</th></tr>
+    <tr><td><code>get-week</code></td><td>a <code>day</code> string (any day in the week)</td><td><code>CookidooCalendarDay[]</code></td></tr>
+    <tr><td><code>add-recipes</code></td><td><code>{ day, recipeIds }</code></td><td>the changed <code>CookidooCalendarDay</code></td></tr>
+    <tr><td><code>remove-recipe</code></td><td><code>{ day, recipeId }</code></td><td>the changed <code>CookidooCalendarDay</code> (empty if that was the last recipe)</td></tr>
+    <tr><td><code>add-custom-recipes</code></td><td><code>{ day, recipeIds }</code> (custom recipe ids)</td><td>the changed <code>CookidooCalendarDay</code></td></tr>
+    <tr><td><code>remove-custom-recipe</code></td><td><code>{ day, recipeId }</code> (a custom recipe id)</td><td>the changed <code>CookidooCalendarDay</code> (empty if that was the last recipe)</td></tr>
+  </table>
+</script>

@@ -16,6 +16,7 @@ The developers of this package are in no way endorsed by or affiliated with Cook
 - **cookidoo-search-recipes** — searches recipes. `msg.payload` in is a plain search string (shorthand for `{ query: ... }`) or a full options object; the result replaces it.
 - **cookidoo-get-recipe-details** — fetches a recipe's full details (ingredients, step groups, nutrition groups, categories, collections, utensils, serving size, active/total time). `msg.payload` in is the recipe id (e.g. from a `cookidoo-search-recipes` hit); the result replaces it.
 - **cookidoo-custom-recipes** — CRUD on the signed-in user's custom recipes (list, get, add-from an official recipe, remove), picked via an **operation** dropdown -- overridable per message with `msg.operation`, same pattern as the shopping-list nodes.
+- **cookidoo-calendar** — operations on the recipe-planning calendar (get a week, add/remove recipes for a day, including the custom-recipe equivalents), same operation-dropdown pattern. A `day` is always an ISO-8601 `YYYY-MM-DD` string.
 
 ## Token persistence
 
@@ -30,7 +31,7 @@ Practically, for **cookidoo-config**:
 
 ## Status
 
-Early, incremental slice: config node, `cookidoo-get-user-info`, the shopping list (`cookidoo-shopping-recipes`, `cookidoo-shopping-additional-items`, `cookidoo-clear-shopping-list`), recipes (`cookidoo-search-recipes`, `cookidoo-get-recipe-details`), and custom recipes (`cookidoo-custom-recipes`). More nodes (calendar, collections, ...) are added as the underlying `cookidoo-api-js` client grows.
+Early, incremental slice: config node, `cookidoo-get-user-info`, the shopping list (`cookidoo-shopping-recipes`, `cookidoo-shopping-additional-items`, `cookidoo-clear-shopping-list`), recipes (`cookidoo-search-recipes`, `cookidoo-get-recipe-details`), custom recipes (`cookidoo-custom-recipes`), and the calendar (`cookidoo-calendar`). More nodes (collections, ...) are added as the underlying `cookidoo-api-js` client grows.
 
 ## Installation
 
