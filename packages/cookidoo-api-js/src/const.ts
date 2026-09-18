@@ -77,3 +77,28 @@ export const CUSTOM_COLLECTIONS_PATH_ACCEPT =
 export const REMOVE_CUSTOM_COLLECTION_PATH = "organize/{language}/api/custom-list/{id}";
 export const REMOVE_RECIPE_FROM_CUSTOM_COLLECTION_PATH =
   "organize/{language}/api/custom-list/{id}/recipes/{recipe}";
+
+/** Paired Thermomix appliances on the account, e.g. `["TM7"]`. Language-independent path. */
+export const DEVICES_PATH = "customer-devices/api/my-devices/versions";
+
+/**
+ * The remote-monitoring (RMI) endpoints live on a dedicated IoT backend
+ * discovered from the mobile home document -> rmi-config sub-document,
+ * rather than through the usual per-service `.well-known/home` pattern (see
+ * {@link Cookidoo.resolveRmiLinks}).
+ */
+export const MOBILE_HOME_PATH = ".well-known/mobile-home";
+export const HAL_ACCEPT =
+  "application/vnd.vorwerk.tmde2.rhd.mobile.hal+json, application/hal+json";
+/** The RMI write endpoints require this API-version header. */
+export const RMI_API_VERSION = "2026-06-01";
+
+export const REL_RMI_CONFIG = "tmde2:rmi-config";
+export const RMI_REGISTER_TOKEN = "rmi:register-token";
+export const RMI_UNREGISTER = "rmi:unregister";
+export const RMI_DEVICES = "rmi:devices";
+
+/** Fields for the push-token registration payload. */
+export const PUSH_BUNDLE_ID = "com.vorwerk.cookidoo";
+/** Android; the value the app sends. */
+export const PUSH_PLATFORM = "AN";

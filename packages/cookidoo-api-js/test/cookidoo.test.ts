@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { Cookidoo } from "../src/cookidoo.js";
-import { CookidooAuthException } from "../src/exceptions.js";
+import { CookidooAuthException, CookidooParseException } from "../src/exceptions.js";
+import { ThermomixMachineType } from "../src/types.js";
 
 const LOCALIZATION = {
   countryCode: "xx",
@@ -368,6 +369,46 @@ function createMockFetch(overrides: { password?: string; errorRedirect?: boolean
         method === "DELETE"
       ) {
         return jsonResponse({ content: RAW_CUSTOM_COLLECTION });
+      }
+
+      if (url.pathname === "/customer-devices/.well-known/home") {
+        return jsonResponse({
+          _links: {
+            "customer-devices:thermomix-versions": {
+              href: "/customer-devices/api/my-devices/versions",
+            },
+          },
+        });
+      }
+      if (url.pathname === "/customer-devices/api/my-devices/versions" && method === "GET") {
+        return jsonResponse(["TM7"]);
+      }
+
+      if (url.pathname === "/.well-known/mobile-home") {
+        return jsonResponse({
+          _links: { "tmde2:rmi-config": { href: "https://rmi.test/rmi-config/.well-known/home" } },
+        });
+      }
+    }
+
+    if (url.hostname === "rmi.test") {
+      if (url.pathname === "/rmi-config/.well-known/home") {
+        return jsonResponse({
+          _links: {
+            "rmi:register-token": { href: "https://rmi.test/device-token" },
+            "rmi:unregister": { href: "https://rmi.test/token" },
+            "rmi:devices": { href: "https://rmi.test/devices{?nonce}" },
+          },
+        });
+      }
+      if (url.pathname === "/devices" && method === "GET") {
+        return jsonResponse([{ deviceId: "monitored-device-1" }]);
+      }
+      if (url.pathname === "/device-token" && method === "POST") {
+        return jsonResponse({ message: "OK" });
+      }
+      if (url.pathname === "/token" && method === "DELETE") {
+        return jsonResponse({ message: "OK" });
       }
     }
 
@@ -964,5 +1005,181 @@ describe("Cookidoo collections", () => {
       "r907015",
     );
     expect(collection).toEqual(EXPECTED_CUSTOM_COLLECTION);
+  });
+});
+
+describe("Cookidoo devices", () => {
+  async function loggedInClient() {
+    const { fetchMock } = createMockFetch();
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: fetchMock },
+    );
+    await client.login();
+    return client;
+  }
+
+  it("gets the paired appliances", async () => {
+    const client = await loggedInClient();
+    const devices = await client.getDevices();
+    expect(devices).toEqual([{ type: ThermomixMachineType.TM7 }]);
+  });
+
+  it("returns an empty array for a 204 No Content (no paired appliance)", async () => {
+    const { fetchMock } = createMockFetch();
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/customer-devices/api/my-devices/versions") {
+        return new Response(null, { status: 204 });
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    expect(await client.getDevices()).toEqual([]);
+  });
+
+  it("raises a parse exception for an unrecognized machine type", async () => {
+    const { fetchMock } = createMockFetch();
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/customer-devices/api/my-devices/versions") {
+        return jsonResponse(["TM99"]);
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    await expect(client.getDevices()).rejects.toBeInstanceOf(CookidooParseException);
+  });
+});
+
+describe("Cookidoo remote monitoring", () => {
+  async function loggedInClient() {
+    const { fetchMock } = createMockFetch();
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: fetchMock },
+    );
+    await client.login();
+    return client;
+  }
+
+  it("lists the currently monitorable device ids", async () => {
+    const client = await loggedInClient();
+    const ids = await client.getMonitoredDeviceIds();
+    expect(ids).toEqual(["monitored-device-1"]);
+  });
+
+  it("caches the mobile-home -> rmi-config resolution walk across calls", async () => {
+    const { fetchMock, calls } = createMockFetch();
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: fetchMock },
+    );
+    await client.login();
+
+    await client.getMonitoredDeviceIds();
+    await client.getMonitoredDeviceIds();
+
+    expect(calls.filter((c) => c === "GET /.well-known/mobile-home")).toHaveLength(1);
+    expect(calls.filter((c) => c === "GET /rmi-config/.well-known/home")).toHaveLength(1);
+    expect(calls.filter((c) => c === "GET /devices")).toHaveLength(2);
+  });
+
+  it("raises when the rmi-config link is missing from the mobile home document", async () => {
+    const { fetchMock } = createMockFetch();
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/.well-known/mobile-home") {
+        return jsonResponse({ _links: {} });
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    await expect(client.getMonitoredDeviceIds()).rejects.toThrow("rmi-config link missing");
+  });
+
+  it("registers a push token with the expected payload and header", async () => {
+    const { fetchMock } = createMockFetch();
+    let capturedBody: unknown;
+    let capturedHeaders: Headers | undefined;
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/device-token" && init?.body) {
+        capturedBody = JSON.parse(init.body as string);
+        capturedHeaders = new Headers(init.headers);
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    await client.registerPushToken("fcm-token", "app-install-id");
+    expect(capturedBody).toEqual({
+      token: "fcm-token",
+      bundleId: "com.vorwerk.cookidoo",
+      platform: "AN",
+      mobileAppId: "app-install-id",
+    });
+    expect(capturedHeaders?.get("rmi-api-version")).toBe("2026-06-01");
+  });
+
+  it("unregisters a push token", async () => {
+    const { fetchMock } = createMockFetch();
+    let capturedBody: unknown;
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/token" && init?.body) {
+        capturedBody = JSON.parse(init.body as string);
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    await client.unregisterPushToken("fcm-token");
+    expect(capturedBody).toEqual({ tokens: ["fcm-token"] });
+  });
+
+  it("raises when an rmi endpoint link is missing", async () => {
+    const { fetchMock } = createMockFetch();
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/rmi-config/.well-known/home") {
+        return jsonResponse({ _links: {} });
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    await expect(client.getMonitoredDeviceIds()).rejects.toThrow("rmi:devices link missing");
+    await expect(client.registerPushToken("t", "i")).rejects.toThrow(
+      "rmi:register-token link missing",
+    );
+    await expect(client.unregisterPushToken("t")).rejects.toThrow("rmi:unregister link missing");
   });
 });

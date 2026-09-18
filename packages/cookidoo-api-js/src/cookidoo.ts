@@ -9,10 +9,19 @@ import {
   CUSTOM_COLLECTIONS_PATH_ACCEPT,
   CUSTOM_RECIPES_PATH_ACCEPT,
   DEFAULT_API_HEADERS,
+  HAL_ACCEPT,
   LOGIN_HEADERS,
   MANAGED_COLLECTIONS_PATH_ACCEPT,
+  MOBILE_HOME_PATH,
   OAUTH_SCOPE,
   OIDC_DISCOVERY_URL,
+  PUSH_BUNDLE_ID,
+  PUSH_PLATFORM,
+  REL_RMI_CONFIG,
+  RMI_API_VERSION,
+  RMI_DEVICES,
+  RMI_REGISTER_TOKEN,
+  RMI_UNREGISTER,
   TOKEN_EXPIRY_MARGIN_S,
 } from "./const.js";
 import {
@@ -26,6 +35,7 @@ import {
   cookidooCalendarDayFromJson,
   cookidooCollectionFromJson,
   cookidooCustomRecipeFromJson,
+  cookidooDeviceFromJson,
   cookidooIngredientItemFromJson,
   cookidooRecipeDetailsFromJson,
   cookidooRecipeFromJson,
@@ -57,6 +67,7 @@ import {
   type CookidooCollectionsCount,
   type CookidooConfig,
   type CookidooCustomRecipe,
+  type CookidooDevice,
   type CookidooIngredientItem,
   type CookidooLocalizationConfig,
   type CookidooSearchRecipesOptions,
@@ -96,6 +107,8 @@ export class Cookidoo {
   private expiresAt = 0;
   private oidc: Record<string, string> | null = null;
   private onAuthDataUpdateCallback: ((authData: CookidooAuthData) => void) | undefined;
+  /** Cached `{rel: href}` map for the remote-monitoring (RMI) endpoints -- see {@link resolveRmiLinks}. */
+  private rmiLinks: Record<string, string> | null = null;
 
   constructor(cfg: Partial<CookidooConfig> = {}, options: CookidooOptions = {}) {
     this.cfg = defaultConfig(cfg);
@@ -798,6 +811,86 @@ export class Cookidoo {
     );
   }
 
+  /**
+   * Get the Thermomix appliances paired to the account.
+   *
+   * Returns an empty array when no appliance is paired.
+   */
+  async getDevices(): Promise<CookidooDevice[]> {
+    await this.ensureEndpoints();
+    const url = this.endpointUrl("customer-devices:thermomix-versions");
+    const result = await this.requestJson("GET", url, "loading devices");
+    // An account without a paired appliance gets a 204 No Content.
+    if (result === null) return [];
+    const models = Cookidoo.ensureSequence(result, "loading devices");
+    return Cookidoo.parseResult("loading devices", () =>
+      models.map((model) => cookidooDeviceFromJson(model as string)),
+    );
+  }
+
+  /**
+   * Get the appliance IDs currently available for remote monitoring.
+   *
+   * Distinct from {@link getDevices} (all paired appliances): an appliance
+   * only appears here while it is online/reachable for monitoring, and the
+   * identifier is the opaque remote-monitoring device id.
+   */
+  async getMonitoredDeviceIds(): Promise<string[]> {
+    const links = await this.resolveRmiLinks();
+    const href = links[RMI_DEVICES];
+    if (href === undefined) throw new CookidooParseException("rmi:devices link missing.");
+    // Strip the discovered href's RFC 6570 query template ({?nonce}); we don't use it.
+    const url = new URL(href.split("{")[0]!);
+    const devices = Cookidoo.ensureSequence(
+      await this.requestJson("GET", url, "loading monitored devices"),
+      "loading monitored devices",
+    );
+    return Cookidoo.parseResult("loading monitored devices", () =>
+      devices.map((device) => (device as Record<string, unknown>).deviceId as string),
+    );
+  }
+
+  /**
+   * Register a push token to receive remote-monitoring cook-state updates.
+   *
+   * Appliance state is delivered as a Firebase Cloud Messaging data message
+   * to the registered token; obtaining the token and receiving the messages
+   * is the caller's responsibility. Decode received payloads with
+   * {@link cookidooCookingActivityFromPush}.
+   *
+   * @param pushToken The FCM registration token to deliver updates to.
+   * @param mobileAppId A stable per-installation identifier for this client.
+   */
+  async registerPushToken(pushToken: string, mobileAppId: string): Promise<void> {
+    const links = await this.resolveRmiLinks();
+    const href = links[RMI_REGISTER_TOKEN];
+    if (href === undefined) {
+      throw new CookidooParseException("rmi:register-token link missing.");
+    }
+    await this.requestJson("POST", new URL(href), "registering push token", {
+      json: {
+        token: pushToken,
+        bundleId: PUSH_BUNDLE_ID,
+        platform: PUSH_PLATFORM,
+        mobileAppId,
+      },
+      headers: { "rmi-api-version": RMI_API_VERSION },
+      parseResponse: false,
+    });
+  }
+
+  /** Unregister a previously registered push token. */
+  async unregisterPushToken(pushToken: string): Promise<void> {
+    const links = await this.resolveRmiLinks();
+    const href = links[RMI_UNREGISTER];
+    if (href === undefined) throw new CookidooParseException("rmi:unregister link missing.");
+    await this.requestJson("DELETE", new URL(href), "unregistering push token", {
+      json: { tokens: [pushToken] },
+      headers: { "rmi-api-version": RMI_API_VERSION },
+      parseResponse: false,
+    });
+  }
+
   // -- internal request helpers -------------------------------------------
 
   /** Build the full URL for a discovered endpoint rel, substituting `{tokens}`. */
@@ -820,6 +913,89 @@ export class Cookidoo {
       );
     }
     return result as Record<string, unknown>;
+  }
+
+  /** Return a JSON-array response or raise the standard parse exception. */
+  private static ensureSequence(result: unknown, operation: string): unknown[] {
+    if (typeof result === "string" || !Array.isArray(result)) {
+      throw new CookidooParseException(
+        `${capitalize(operation)} failed during parsing of request response.`,
+      );
+    }
+    return result;
+  }
+
+  /**
+   * Resolve and cache the remote-monitoring endpoint links.
+   *
+   * Walks the mobile home document to the `rmi-config` sub-document and
+   * returns its `{rel: href}` map (`rmi:register-token`, `rmi:devices`,
+   * `rmi:unregister`, ...). Unlike every other endpoint, these live on a
+   * dedicated IoT backend reached via a two-hop HAL walk rather than the
+   * usual per-service `.well-known/home` discovery.
+   */
+  private async resolveRmiLinks(): Promise<Record<string, string>> {
+    if (this.rmiLinks !== null) return this.rmiLinks;
+
+    const halHeaders = { ACCEPT: HAL_ACCEPT };
+    const homeUrl = new URL(
+      MOBILE_HOME_PATH,
+      `${this.apiEndpoint.toString().replace(/\/$/, "")}/`,
+    );
+    const home = Cookidoo.ensureMapping(
+      await this.requestJson("GET", homeUrl, "resolving remote monitoring", {
+        headers: halHeaders,
+      }),
+      "resolving remote monitoring",
+    );
+    const rmiConfigUrl = Cookidoo.halLink(home, REL_RMI_CONFIG);
+    if (rmiConfigUrl === null) {
+      throw new CookidooParseException(
+        "Resolving remote monitoring failed: rmi-config link missing.",
+      );
+    }
+    const rmiHome = Cookidoo.ensureMapping(
+      await this.requestJson("GET", new URL(rmiConfigUrl), "resolving remote monitoring", {
+        headers: halHeaders,
+      }),
+      "resolving remote monitoring",
+    );
+    const linksObj = rmiHome._links;
+    if (typeof linksObj !== "object" || linksObj === null || Array.isArray(linksObj)) {
+      throw new CookidooParseException(
+        "Resolving remote monitoring failed during parsing of request response.",
+      );
+    }
+    const links: Record<string, string> = {};
+    for (const [rel, value] of Object.entries(linksObj as Record<string, unknown>)) {
+      if (typeof value === "string") {
+        links[rel] = value;
+      } else if (
+        typeof value === "object" &&
+        value !== null &&
+        typeof (value as Record<string, unknown>).href === "string"
+      ) {
+        links[rel] = (value as Record<string, unknown>).href as string;
+      }
+    }
+    this.rmiLinks = links;
+    return links;
+  }
+
+  /** Extract a HAL link href for `rel` from a document's `_links`. */
+  private static halLink(doc: Record<string, unknown>, rel: string): string | null {
+    const links = doc._links;
+    if (typeof links !== "object" || links === null || Array.isArray(links)) return null;
+    const value = (links as Record<string, unknown>)[rel];
+    if (typeof value === "string") return value;
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      typeof (value as Record<string, unknown>).href === "string"
+    ) {
+      return (value as Record<string, unknown>).href as string;
+    }
+    return null;
   }
 
   /** Convert a validated JSON response into public types. */

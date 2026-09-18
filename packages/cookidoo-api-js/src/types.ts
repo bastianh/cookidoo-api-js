@@ -289,3 +289,45 @@ export interface CookidooCollectionsCount {
   totalElements: number;
   totalPages: number;
 }
+
+/** A paired Thermomix appliance on the account. */
+export interface CookidooDevice {
+  type: ThermomixMachineType;
+}
+
+/** State of an ongoing remote-monitored cook. */
+export enum CookidooCookState {
+  RUNNING = "RUNNING",
+  PAUSED = "PAUSED",
+  DONE = "DONE",
+  ACKNOWLEDGED = "ACKNOWLEDGED",
+  STALE = "STALE",
+}
+
+/**
+ * Live cook state pushed by an appliance's remote monitoring.
+ *
+ * Values the recipe doesn't provide are `null` (the app renders `"---"` for
+ * an unset current temperature, which is normalized to `null` here). Build
+ * one from a received Firebase Cloud Messaging data message with
+ * {@link cookidooCookingActivityFromPush}; use {@link isCookingActivityActive}
+ * for the app's "is a cook currently running or paused" check.
+ */
+export interface CookidooCookingActivity {
+  deviceId: string;
+  cookingActivityId: string | null;
+  state: CookidooCookState | null;
+  recipeId: string | null;
+  recipeType: string | null;
+  recipeName: string | null;
+  step: string | null;
+  remainingSeconds: number | null;
+  isTimeEstimated: boolean;
+  currentTemperature: number | null;
+  targetTemperature: number | null;
+  messageTitle: string | null;
+  messageBody: string | null;
+  messageCriticality: string | null;
+  completedAt: Date | null;
+  staleAt: Date | null;
+}

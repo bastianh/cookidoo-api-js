@@ -20,6 +20,7 @@ import type {
   RecipeJSON,
   SearchResultJSON,
 } from "./raw-types.js";
+import { CookidooCookState, ThermomixMachineType } from "./types.js";
 import type {
   CookidooAdditionalItem,
   CookidooCalendarDay,
@@ -27,7 +28,9 @@ import type {
   CookidooChapter,
   CookidooChapterRecipe,
   CookidooCollection,
+  CookidooCookingActivity,
   CookidooCustomRecipe,
+  CookidooDevice,
   CookidooIngredient,
   CookidooLocalizationConfig,
   CookidooIngredientItem,
@@ -374,6 +377,128 @@ export function cookidooCollectionFromJson(
     name: collection.title,
     description: collection.description ?? null,
     chapters: collection.chapters.map(cookidooChapterFromJson),
+  };
+}
+
+/**
+ * Convert a device machine type received from the API to a Cookidoo device.
+ *
+ * The devices endpoint returns bare machine-type strings (e.g. `"TM7"`).
+ */
+export function cookidooDeviceFromJson(model: string): CookidooDevice {
+  if (!(Object.values(ThermomixMachineType) as string[]).includes(model)) {
+    throw new Error(`Unknown Thermomix machine type: '${model}'.`);
+  }
+  return { type: model as ThermomixMachineType };
+}
+
+/** Whether a cook is currently running or paused. */
+export function isCookingActivityActive(activity: CookidooCookingActivity): boolean {
+  return activity.state === CookidooCookState.RUNNING || activity.state === CookidooCookState.PAUSED;
+}
+
+/** Parse a push timestamp (ISO-8601 or epoch millis/seconds). */
+function pushTimestamp(value: unknown): Date | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") {
+    const seconds = value > 1e12 ? value / 1000 : value;
+    return new Date(seconds * 1000);
+  }
+  if (typeof value === "string") {
+    const text = value.trim();
+    if (/^\d+$/.test(text)) return pushTimestamp(Number(text));
+    const date = new Date(text.replace(/Z/g, "+00:00"));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  return null;
+}
+
+/** Parse a numeric display field; the app uses `"---"` for 'no value'. */
+function pushNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return value;
+  const text = String(value).trim();
+  if (!text || [...text].every((c) => c === "-" || c === "–" || c === "—")) return null;
+  const num = Number(text.replace(",", "."));
+  return Number.isNaN(num) ? null : num;
+}
+
+/** Parse a boolean; push values are strings, so `"false"` must be falsy. */
+function pushBool(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return ["true", "1", "yes"].includes(value.trim().toLowerCase());
+  return Boolean(value);
+}
+
+/** Parse an integer the way Python's `int()` would: truncate a number, but require an exact integer string. */
+function pushInt(value: unknown): number | null {
+  if (typeof value === "number") return Math.trunc(value);
+  if (typeof value === "string" && /^[+-]?\d+$/.test(value.trim())) return parseInt(value, 10);
+  return null;
+}
+
+function parseCookState(raw: unknown): CookidooCookState {
+  const upper = String(raw).toUpperCase();
+  if (!(Object.values(CookidooCookState) as string[]).includes(upper)) {
+    throw new Error(`Unknown Cookidoo cook state: '${upper}'.`);
+  }
+  return upper as CookidooCookState;
+}
+
+/**
+ * Convert a remote-monitoring push payload into a cooking activity.
+ *
+ * Appliance state is delivered out of band (a Firebase Cloud Messaging data
+ * message) rather than as an HTTP response, so consumers receive it via
+ * their own push channel and decode it here. Both the on-the-wire field
+ * names (`leadingText`/`trailingText`/`completedDate`/`staleDate`/...) and
+ * the app's parsed names are accepted.
+ */
+export function cookidooCookingActivityFromPush(
+  data: Record<string, unknown>,
+): CookidooCookingActivity {
+  function first(...keys: string[]): unknown {
+    for (const key of keys) {
+      if (key in data && data[key] !== null && data[key] !== undefined) return data[key];
+    }
+    return null;
+  }
+
+  const remainingRaw = first("remainingDuration");
+  let remaining =
+    typeof remainingRaw === "number" || typeof remainingRaw === "string"
+      ? pushInt(remainingRaw)
+      : null;
+  const completedAt = pushTimestamp(first("completedDate", "completedTimestamp"));
+  const endAt = pushTimestamp(first("endTimestamp"));
+  // The wire payload has no remainingDuration; derive it from the finish time.
+  if (remaining === null) {
+    const finish = completedAt ?? endAt;
+    if (finish !== null) {
+      remaining = Math.max(0, Math.round((finish.getTime() - Date.now()) / 1000));
+    }
+  }
+
+  const stateRaw = first("state");
+  const recipeType = first("recipeType");
+
+  return {
+    deviceId: String(first("deviceId") ?? ""),
+    cookingActivityId: (first("cookingActivityId") as string | null) ?? null,
+    state: stateRaw !== null ? parseCookState(stateRaw) : null,
+    recipeId: (first("recipeId") as string | null) ?? null,
+    recipeType: recipeType !== null ? String(recipeType).toUpperCase() : null,
+    recipeName: (first("leadingText", "leadingInfoText", "infoText") as string | null) ?? null,
+    step: (first("trailingText", "trailingInfoText") as string | null) ?? null,
+    remainingSeconds: remaining,
+    isTimeEstimated: pushBool(data.isTimeEstimated ?? false),
+    currentTemperature: pushNumber(first("primaryInfo")),
+    targetTemperature: pushNumber(first("secondaryInfo")),
+    messageTitle: (first("messageTitle") as string | null) ?? null,
+    messageBody: (first("messageBody") as string | null) ?? null,
+    messageCriticality: (first("messageCriticality") as string | null) ?? null,
+    completedAt,
+    staleAt: pushTimestamp(first("staleDate", "staleTimestamp")),
   };
 }
 
