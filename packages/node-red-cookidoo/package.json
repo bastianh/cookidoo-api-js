@@ -13,7 +13,8 @@
       "cookidoo-shopping-additional-items": "nodes/cookidoo-shopping-additional-items.js",
       "cookidoo-clear-shopping-list": "nodes/cookidoo-clear-shopping-list.js",
       "cookidoo-search-recipes": "nodes/cookidoo-search-recipes.js",
-      "cookidoo-get-recipe-details": "nodes/cookidoo-get-recipe-details.js"
+      "cookidoo-get-recipe-details": "nodes/cookidoo-get-recipe-details.js",
+      "cookidoo-custom-recipes": "nodes/cookidoo-custom-recipes.js"
     }
   },
   "dependencies": {
