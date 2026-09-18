@@ -86,6 +86,34 @@ const RAW_CALENDAR_DAY = {
   customerRecipeIds: [],
 };
 
+const RAW_COOKING_HISTORY = {
+  userId: "00000000-0000-0000-0000-000000000000",
+  entries: [
+    {
+      details: { timestamp: "2026-09-05T05:31:47.529Z" },
+      recipe: {
+        id: "r59322",
+        title: "Vollkorn-Toastbrötchen",
+        totalTime: "5100.0",
+        type: "VORWERK",
+        locale: "",
+        assets: { images: { square: "https://assets.test/{transformation}/x.jpg" } },
+      },
+    },
+    {
+      details: { timestamp: "2026-08-28T13:56:30.168Z" },
+      recipe: {
+        id: "r54743",
+        title: "Pizzateig",
+        totalTime: "900.0",
+        type: "VORWERK",
+        locale: "",
+        assets: { images: null },
+      },
+    },
+  ],
+};
+
 const RAW_MANAGED_COLLECTION = {
   id: "col500561",
   title: "Schneeweiss und Zuckersüss",
@@ -320,6 +348,7 @@ function createMockFetch(overrides: { password?: string; errorRedirect?: boolean
       if (url.pathname === "/organize/.well-known/home") {
         return jsonResponse({
           _links: {
+            "organize:api-cooking-history": { href: "/organize/{lang}/api/cooking-history" },
             "organize:api-managed-list": { href: "/organize/{lang}/api/managed-list" },
             "organize:api-managed-list-single": {
               href: "/organize/{lang}/api/managed-list/{id}",
@@ -333,6 +362,9 @@ function createMockFetch(overrides: { password?: string; errorRedirect?: boolean
             },
           },
         });
+      }
+      if (url.pathname === "/organize/de-TEST/api/cooking-history" && method === "GET") {
+        return jsonResponse(RAW_COOKING_HISTORY);
       }
       if (url.pathname === "/organize/de-TEST/api/managed-list") {
         if (method === "GET") {
@@ -851,6 +883,94 @@ describe("Cookidoo calendar", () => {
     await client.removeCustomRecipeFromCalendar("2025-03-04", "r214846");
     expect(capturedParams).not.toBeNull();
     expect((capturedParams as unknown as URLSearchParams).get("recipeSource")).toBe("CUSTOMER");
+  });
+});
+
+describe("Cookidoo cooking history", () => {
+  async function loggedInClient() {
+    const { fetchMock } = createMockFetch();
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: fetchMock },
+    );
+    await client.login();
+    return client;
+  }
+
+  it("gets the cooking history, newest first as the API returns it", async () => {
+    const client = await loggedInClient();
+    const history = await client.getCookingHistory();
+    expect(history).toEqual([
+      {
+        id: "r59322",
+        name: "Vollkorn-Toastbrötchen",
+        cookedAt: new Date("2026-09-05T05:31:47.529Z"),
+        totalTime: 5100,
+        thumbnail: "https://assets.test/t_web_shared_recipe_221x240/x.jpg",
+        image: "https://assets.test/t_web_rdp_recipe_584x480_1_5x/x.jpg",
+        url: "https://cookidoo.test/recipes/recipe/de-TEST/r59322",
+      },
+      {
+        id: "r54743",
+        name: "Pizzateig",
+        cookedAt: new Date("2026-08-28T13:56:30.168Z"),
+        totalTime: 900,
+        thumbnail: null,
+        image: null,
+        url: "https://cookidoo.test/recipes/recipe/de-TEST/r54743",
+      },
+    ]);
+  });
+
+  it("returns an empty array for an account that hasn't cooked anything", async () => {
+    const { fetchMock } = createMockFetch();
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/organize/de-TEST/api/cooking-history") {
+        return jsonResponse({ userId: "u1", entries: [] });
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    expect(await client.getCookingHistory()).toEqual([]);
+  });
+
+  it("raises a parse exception for an unparsable entry timestamp", async () => {
+    const { fetchMock } = createMockFetch();
+    const spyFetch: typeof fetch = async (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/organize/de-TEST/api/cooking-history") {
+        return jsonResponse({
+          userId: "u1",
+          entries: [
+            {
+              details: { timestamp: "not-a-timestamp" },
+              recipe: {
+                id: "r1",
+                title: "Broken",
+                totalTime: "60.0",
+                type: "VORWERK",
+                locale: "",
+                assets: { images: null },
+              },
+            },
+          ],
+        });
+      }
+      return fetchMock(input, init);
+    };
+    const client = new Cookidoo(
+      { localization: LOCALIZATION, email: "a@b.com", password: "secret" },
+      { fetch: spyFetch },
+    );
+    await client.login();
+
+    await expect(client.getCookingHistory()).rejects.toBeInstanceOf(CookidooParseException);
   });
 });
 

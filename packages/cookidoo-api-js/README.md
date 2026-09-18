@@ -137,9 +137,16 @@ console.log(activity.state, activity.recipeName, isCookingActivityActive(activit
 await cookidoo.unregisterPushToken(fcmToken);
 ```
 
+Cooking history:
+
+```ts
+const history = await cookidoo.getCookingHistory(); // newest cooked first, no pagination
+console.log(history[0]?.name, history[0]?.cookedAt);
+```
+
 ## Status
 
-Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items — get/add/remove/edit-ownership, including custom recipes, plus clearing the whole list), recipes (`searchRecipes`, `getRecipeDetails`), custom recipes (`getCustomRecipe`, `listCustomRecipes`, `addCustomRecipeFrom`, `removeCustomRecipe`), the calendar (`getRecipesInCalendarWeek`, `add/removeRecipesToCalendar`, plus the custom-recipe equivalents), collections (`count/get/add/removeManagedCollection(s)`, `count/get/add/removeCustomCollection(s)`, `add/removeRecipeFromCustomCollection`), and the REST side of devices/remote-monitoring (`getDevices`, `getMonitoredDeviceIds`, `register/unregisterPushToken`, `cookidooCookingActivityFromPush`). Actually *receiving* the Firebase push messages themselves is out of scope -- see "Devices and remote monitoring" above.
+Early, incremental port. Currently covers the OAuth2/PKCE login flow, token refresh/persistence, `getUserInfo`, the shopping list (recipes, ingredient items, additional items — get/add/remove/edit-ownership, including custom recipes, plus clearing the whole list), recipes (`searchRecipes`, `getRecipeDetails`), custom recipes (`getCustomRecipe`, `listCustomRecipes`, `addCustomRecipeFrom`, `removeCustomRecipe`), the calendar (`getRecipesInCalendarWeek`, `add/removeRecipesToCalendar`, plus the custom-recipe equivalents), collections (`count/get/add/removeManagedCollection(s)`, `count/get/add/removeCustomCollection(s)`, `add/removeRecipeFromCustomCollection`), the REST side of devices/remote-monitoring (`getDevices`, `getMonitoredDeviceIds`, `register/unregisterPushToken`, `cookidooCookingActivityFromPush`), and the cooking history (`getCookingHistory`). Actually *receiving* the Firebase push messages themselves is out of scope -- see "Devices and remote monitoring" above.
 
 ## Exceptions
 

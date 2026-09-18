@@ -66,6 +66,15 @@ export const ADD_RECIPES_TO_CALENDAR_PATH = "planning/{language}/api/my-day";
 export const REMOVE_RECIPE_FROM_CALENDAR_PATH =
   "planning/{language}/api/my-day/{day}/recipes/{recipe}";
 
+/**
+ * "Last cooked": the recipes the account has cooked, newest first. The
+ * service returns the whole history in one response (it takes no
+ * page/limit params).
+ */
+export const COOKING_HISTORY_PATH = "organize/{language}/api/cooking-history";
+export const COOKING_HISTORY_PATH_ACCEPT =
+  "application/vnd.vorwerk.organize.cooking-history.mobile+json";
+
 export const MANAGED_COLLECTIONS_PATH = "organize/{language}/api/managed-list";
 export const MANAGED_COLLECTIONS_PATH_ACCEPT =
   "application/vnd.vorwerk.organize.managed-list.mobile+json";

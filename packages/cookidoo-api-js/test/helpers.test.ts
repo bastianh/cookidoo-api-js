@@ -5,6 +5,7 @@ import {
   cookidooCalendarDayFromJson,
   cookidooCollectionFromJson,
   cookidooCookingActivityFromPush,
+  cookidooCookingHistoryEntryFromJson,
   cookidooCustomRecipeFromJson,
   cookidooDeviceFromJson,
   cookidooIngredientFromJson,
@@ -677,6 +678,79 @@ describe("cookidooCookingActivityFromPush", () => {
 
   it("throws on an unrecognized state", () => {
     expect(() => cookidooCookingActivityFromPush({ ...RAW_PUSH, state: "not-a-state" })).toThrow();
+  });
+});
+
+describe("cookidooCookingHistoryEntryFromJson", () => {
+  const localization = {
+    countryCode: "ch",
+    language: "de-CH",
+    url: "https://cookidoo.ch/foundation/de-CH",
+  };
+
+  it("maps a cooked recipe, coercing the stringified-float totalTime", () => {
+    const entry = cookidooCookingHistoryEntryFromJson(
+      {
+        details: { timestamp: "2026-09-05T05:31:47.529Z" },
+        recipe: {
+          id: "r59322",
+          title: "Vollkorn-Toastbrötchen",
+          totalTime: "5100.0",
+          type: "VORWERK",
+          locale: "",
+          assets: {
+            images: {
+              square: "https://assets.test/{transformation}/x.jpg",
+              portrait: null,
+              landscape: null,
+            },
+          },
+        },
+      },
+      localization,
+    );
+    expect(entry).toEqual({
+      id: "r59322",
+      name: "Vollkorn-Toastbrötchen",
+      cookedAt: new Date("2026-09-05T05:31:47.529Z"),
+      totalTime: 5100,
+      thumbnail: "https://assets.test/t_web_shared_recipe_221x240/x.jpg",
+      image: "https://assets.test/t_web_rdp_recipe_584x480_1_5x/x.jpg",
+      url: "https://cookidoo.ch/recipes/recipe/de-CH/r59322",
+    });
+  });
+
+  it("parses without images, leaving both URLs null", () => {
+    const entry = cookidooCookingHistoryEntryFromJson({
+      details: { timestamp: "2026-08-28T13:56:30.168Z" },
+      recipe: {
+        id: "r54743",
+        title: "Pizzateig",
+        totalTime: "900.0",
+        type: "VORWERK",
+        locale: "",
+        assets: { images: null },
+      },
+    });
+    expect(entry.thumbnail).toBeNull();
+    expect(entry.image).toBeNull();
+    expect(entry.totalTime).toBe(900);
+  });
+
+  it("throws on an unparsable timestamp instead of producing an invalid entry", () => {
+    expect(() =>
+      cookidooCookingHistoryEntryFromJson({
+        details: { timestamp: "not-a-timestamp" },
+        recipe: {
+          id: "r59322",
+          title: "Vollkorn-Toastbrötchen",
+          totalTime: "5100.0",
+          type: "VORWERK",
+          locale: "",
+          assets: { images: null },
+        },
+      }),
+    ).toThrow();
   });
 });
 

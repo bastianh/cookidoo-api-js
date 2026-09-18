@@ -245,3 +245,27 @@ export interface PaginationJSON {
   totalElements: number;
   totalPages: number;
 }
+
+export interface CookingHistoryRecipeJSON {
+  id: string;
+  title: string;
+  /** Reported as a stringified float of seconds (e.g. `"5100.0"`), unlike the planning endpoints' plain int. */
+  totalTime: string;
+  type: string;
+  locale: string;
+  assets: CalendarDayRecipeAssetsJSON | null;
+}
+
+export interface CookingHistoryDetailsJSON {
+  timestamp: string;
+}
+
+export interface CookingHistoryEntryJSON {
+  details: CookingHistoryDetailsJSON;
+  recipe: CookingHistoryRecipeJSON;
+}
+
+export interface CookingHistoryJSON {
+  userId: string;
+  entries: CookingHistoryEntryJSON[];
+}

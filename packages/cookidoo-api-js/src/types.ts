@@ -295,6 +295,24 @@ export interface CookidooDevice {
   type: ThermomixMachineType;
 }
 
+/**
+ * A "last cooked" cooking history entry.
+ *
+ * `getCookingHistory` returns these newest-cooked first; the service
+ * doesn't paginate this endpoint.
+ */
+export interface CookidooCookingHistoryEntry {
+  id: string;
+  name: string;
+  /** When the recipe was cooked (UTC). */
+  cookedAt: Date;
+  /** In seconds. */
+  totalTime: number;
+  thumbnail: string | null;
+  image: string | null;
+  url: string;
+}
+
 /** State of an ongoing remote-monitored cook. */
 export enum CookidooCookState {
   RUNNING = "RUNNING",
