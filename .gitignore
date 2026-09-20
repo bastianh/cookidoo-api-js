@@ -11,3 +11,7 @@ coverage/
 # Reference checkout of the upstream Python library, kept locally for porting
 # reference but not part of this JS monorepo.
 cookidoo-api/
+
+# Local-only project notes (may contain decompiled third-party identifiers
+# that are deliberately kept out of git history) -- see CLAUDE.local.md
+CLAUDE.local.md
