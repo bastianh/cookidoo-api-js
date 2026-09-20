@@ -4,6 +4,13 @@
   "description": "Node-RED nodes for Cookidoo, built on cookidoo-api-js.",
   "license": "MIT",
   "keywords": ["cookidoo", "vorwerk", "thermomix"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bastianh/cookidoo-api-js.git",
+    "directory": "packages/node-red-cookidoo"
+  },
+  "homepage": "https://github.com/bastianh/cookidoo-api-js/tree/main/packages/node-red-cookidoo#readme",
+  "bugs": "https://github.com/bastianh/cookidoo-api-js/issues",
   "publishConfig": {
     "access": "public"
   },

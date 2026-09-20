@@ -5,6 +5,13 @@
   "type": "module",
   "license": "MIT",
   "keywords": ["cookidoo", "vorwerk", "thermomix", "home-assistant", "iot"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bastianh/cookidoo-api-js.git",
+    "directory": "packages/cookidoo-api-js"
+  },
+  "homepage": "https://github.com/bastianh/cookidoo-api-js/tree/main/packages/cookidoo-api-js#readme",
+  "bugs": "https://github.com/bastianh/cookidoo-api-js/issues",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",

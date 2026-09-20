@@ -1,13 +1,20 @@
 {
   "name": "@bastianh/node-red-fcm",
   "version": "0.1.0",
-  "private": true,
   "description": "Node-RED nodes that obtain a Firebase Cloud Messaging registration token for any Firebase project and receive its push messages.",
   "license": "MIT",
-  "keywords": ["fcm", "firebase", "push"],
+  "keywords": ["fcm", "firebase", "push", "node-red"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bastianh/cookidoo-api-js.git",
+    "directory": "packages/node-red-fcm"
+  },
+  "homepage": "https://github.com/bastianh/cookidoo-api-js/tree/main/packages/node-red-fcm#readme",
+  "bugs": "https://github.com/bastianh/cookidoo-api-js/issues",
   "publishConfig": {
     "access": "public"
   },
+  "files": ["nodes"],
   "node-red": {
     "version": ">=3.0.0",
     "nodes": {
