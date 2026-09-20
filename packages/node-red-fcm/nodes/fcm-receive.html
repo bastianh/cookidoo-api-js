@@ -1,0 +1,57 @@
+<script type="text/javascript">
+  RED.nodes.registerType("fcm-receive", {
+    category: "network",
+    color: "#ffc107",
+    defaults: {
+      name: { value: "" },
+      fcm: { value: "", type: "fcm-config", required: true },
+    },
+    inputs: 0,
+    outputs: 2,
+    outputLabels: ["token", "message"],
+    icon: "font-awesome/fa-bell",
+    label: function () {
+      return this.name || "fcm receive";
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="fcm-receive">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-fcm"><i class="fa fa-cog"></i> FCM</label>
+    <input type="text" id="node-input-fcm" />
+  </div>
+  <div class="form-tips">
+    Output 1 fires with the FCM registration token (on connect and on every rotation), output 2 with each received push message.
+  </div>
+</script>
+
+<script type="text/html" data-help-name="fcm-receive">
+  <p>Receives Firebase Cloud Messaging push for the app configured in its <code>fcm-config</code> node. This node has no input; it emits on its own as things arrive.</p>
+  <h3>Outputs</h3>
+  <ol class="node-ports">
+    <li>Token
+      <dl class="message-properties">
+        <dt>payload <span class="property-type">string</span></dt>
+        <dd>the current FCM registration token — sent once on connect and again every time the library rotates it. Feed this into whatever "register this token" call the app's backend expects, and re-send it on every rotation.</dd>
+        <dt>credentials <span class="property-type">object</span></dt>
+        <dd>the full registration the token came from.</dd>
+      </dl>
+    </li>
+    <li>Message
+      <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>the received FCM message — the envelope's <code>message</code>, so a data message's fields are under <code>payload.data</code>.</dd>
+        <dt>persistentId <span class="property-type">string</span></dt>
+        <dd>the message's persistent id.</dd>
+        <dt>fcm <span class="property-type">object</span></dt>
+        <dd>the raw <code>{ message, persistentId }</code> envelope.</dd>
+      </dl>
+    </li>
+  </ol>
+  <p>Messages are passed through untouched — decoding an app's payload is the job of whatever you wire the second output into.</p>
+</script>

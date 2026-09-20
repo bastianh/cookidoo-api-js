@@ -22,7 +22,11 @@ import { watch, readFileSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, relative } from "node:path";
 
-const WATCH_PATHS = ["packages/cookidoo-api-js/dist", "packages/node-red-cookidoo/nodes"];
+const WATCH_PATHS = [
+  "packages/cookidoo-api-js/dist",
+  "packages/node-red-cookidoo/nodes",
+  "packages/node-red-fcm/nodes",
+];
 // A single tsup rebuild (see the cookidoo-api-js "dev" script) writes several
 // files as separate fs events spread over ~1s (JS/CJS immediately, the
 // slower .d.ts a few hundred ms later), so this needs to comfortably outlast
