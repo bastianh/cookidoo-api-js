@@ -1,6 +1,6 @@
 {
   "name": "cookidoo-api-js",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Unofficial JavaScript/TypeScript client to access Cookidoo.",
   "type": "module",
   "license": "MIT",
