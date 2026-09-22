@@ -415,13 +415,20 @@ function pushTimestamp(value: unknown): Date | null {
   return null;
 }
 
-/** Parse a numeric display field; the app uses `"---"` for 'no value'. */
+/**
+ * Parse a numeric display field; the app uses `"---"` for 'no value'.
+ *
+ * Temperatures are delivered with a trailing unit marker (e.g. `"100°"`), so
+ * the leading numeric run is extracted rather than parsing the whole string.
+ */
 function pushNumber(value: unknown): number | null {
   if (value === null || value === undefined) return null;
   if (typeof value === "number") return value;
   const text = String(value).trim();
   if (!text || [...text].every((c) => c === "-" || c === "–" || c === "—")) return null;
-  const num = Number(text.replace(",", "."));
+  const match = text.replace(",", ".").match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const num = Number(match[0]);
   return Number.isNaN(num) ? null : num;
 }
 

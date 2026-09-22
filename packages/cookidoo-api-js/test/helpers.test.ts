@@ -655,6 +655,8 @@ describe("cookidooCookingActivityFromPush", () => {
     ["secondaryInfo", "37,5", "targetTemperature", 37.5],
     ["secondaryInfo", 95, "targetTemperature", 95],
     ["secondaryInfo", null, "targetTemperature", null],
+    // a degree marker is stripped rather than making the whole value unparseable
+    ["primaryInfo", "100°", "currentTemperature", 100],
     // _push_bool: real bools pass through, strings are coerced
     ["isTimeEstimated", true, "isTimeEstimated", true],
     ["isTimeEstimated", "yes", "isTimeEstimated", true],
