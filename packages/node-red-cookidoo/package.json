@@ -1,6 +1,6 @@
 {
   "name": "@bastianh/node-red-cookidoo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Node-RED nodes for Cookidoo, built on cookidoo-api-js.",
   "license": "MIT",
   "keywords": ["cookidoo", "vorwerk", "thermomix"],
